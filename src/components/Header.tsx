@@ -1,10 +1,12 @@
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { ShoppingBag, Menu, X, User } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
 export function Header() {
   const { totalItems, setIsCartOpen } = useCart();
+  const { user, isAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -53,18 +55,26 @@ export function Header() {
             MAISON
           </Link>
 
-          {/* Cart */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative p-2 -mr-2 group"
-          >
-            <ShoppingBag className="w-5 h-5 transition-transform group-hover:scale-110" />
-            {totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center font-medium">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          {/* User & Cart */}
+          <div className="flex items-center gap-2">
+            <Link
+              to={user ? (isAdmin ? '/admin' : '/orders') : '/auth'}
+              className="p-2 group"
+            >
+              <User className="w-5 h-5 transition-transform group-hover:scale-110" />
+            </Link>
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2 -mr-2 group"
+            >
+              <ShoppingBag className="w-5 h-5 transition-transform group-hover:scale-110" />
+              {totalItems > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                  {totalItems}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
