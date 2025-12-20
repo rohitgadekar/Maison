@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ interface Product {
   description: string | null;
   price: number;
   image_url: string | null;
+  images: string[] | null;
   category: string;
   sizes: string[] | null;
   inventory: number;
@@ -35,6 +36,7 @@ const AdminProducts = () => {
     description: '',
     price: '',
     image_url: '',
+    images: ['', '', '', '', ''],
     category: '',
     sizes: 'S, M, L, XL',
     inventory: '0'
@@ -65,6 +67,7 @@ const AdminProducts = () => {
       description: '',
       price: '',
       image_url: '',
+      images: ['', '', '', '', ''],
       category: '',
       sizes: 'S, M, L, XL',
       inventory: '0'
@@ -74,11 +77,17 @@ const AdminProducts = () => {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    
+    // Prepare images array - ensure we have 5 slots
+    const productImages = product.images || [];
+    const imagesArray = [...productImages, '', '', '', '', ''].slice(0, 5);
+    
     setFormData({
       name: product.name,
       description: product.description || '',
       price: product.price.toString(),
       image_url: product.image_url || '',
+      images: imagesArray,
       category: product.category,
       sizes: product.sizes?.join(', ') || 'S, M, L, XL',
       inventory: product.inventory.toString()
@@ -86,16 +95,24 @@ const AdminProducts = () => {
     setIsDialogOpen(true);
   };
 
+  const handleImageChange = (index: number, value: string) => {
+    const newImages = [...formData.images];
+    newImages[index] = value;
+    setFormData({ ...formData, images: newImages });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const sizesArray = formData.sizes.split(',').map(s => s.trim()).filter(Boolean);
+    const imagesArray = formData.images.filter(img => img.trim() !== '');
 
     const productData = {
       name: formData.name,
       description: formData.description || null,
       price: parseFloat(formData.price),
-      image_url: formData.image_url || null,
+      image_url: imagesArray[0] || formData.image_url || null,
+      images: imagesArray,
       category: formData.category,
       sizes: sizesArray,
       inventory: parseInt(formData.inventory),
@@ -163,6 +180,13 @@ const AdminProducts = () => {
     fetchProducts();
   };
 
+  const getProductImage = (product: Product): string => {
+    if (product.images && product.images.length > 0) {
+      return product.images[0];
+    }
+    return product.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=450&fit=crop';
+  };
+
   if (loading) {
     return (
       <div className="p-6 lg:p-8">
@@ -192,12 +216,18 @@ const AdminProducts = () => {
               !product.is_active ? 'opacity-60' : ''
             }`}
           >
-            <div className="aspect-[4/3] bg-muted">
+            <div className="aspect-[4/3] bg-muted relative">
               <img
-                src={product.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=450&fit=crop'}
+                src={getProductImage(product)}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
+              {product.images && product.images.length > 1 && (
+                <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3" />
+                  {product.images.length}
+                </div>
+              )}
             </div>
             <div className="p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -248,7 +278,7 @@ const AdminProducts = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -323,15 +353,52 @@ const AdminProducts = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image_url">Image URL</Label>
-              <Input
-                id="image_url"
-                type="url"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://..."
-              />
+            {/* Multiple Images */}
+            <div className="space-y-3">
+              <Label>Product Images (1-5 images)</Label>
+              <p className="text-sm text-muted-foreground">
+                Add up to 5 image URLs. The first image will be used as the main product image.
+              </p>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {formData.images.map((imageUrl, index) => (
+                  <div key={index} className="flex gap-3 items-start">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={`Product image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        value={imageUrl}
+                        onChange={(e) => handleImageChange(index, e.target.value)}
+                        placeholder={index === 0 ? "Main image URL (required)" : `Image ${index + 1} URL (optional)`}
+                      />
+                    </div>
+                    {imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleImageChange(index, '')}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">

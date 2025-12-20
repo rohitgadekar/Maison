@@ -69,6 +69,7 @@ export type Database = {
           shipping_postal_code: string | null
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
+          tracking_number: string | null
           updated_at: string
           user_id: string
         }
@@ -81,6 +82,7 @@ export type Database = {
           shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
+          tracking_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -93,6 +95,7 @@ export type Database = {
           shipping_postal_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
+          tracking_number?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -105,6 +108,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           inventory: number
           is_active: boolean
           name: string
@@ -118,6 +122,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           inventory?: number
           is_active?: boolean
           name: string
@@ -131,6 +136,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           inventory?: number
           is_active?: boolean
           name?: string
@@ -177,6 +183,51 @@ export type Database = {
           id?: string
           phone?: string | null
           postal_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_addresses: {
+        Row: {
+          address: string
+          city: string
+          country: string
+          created_at: string
+          full_name: string
+          id: string
+          is_default: boolean
+          label: string
+          phone: string | null
+          postal_code: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          city: string
+          country?: string
+          created_at?: string
+          full_name: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone?: string | null
+          postal_code: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          country?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone?: string | null
+          postal_code?: string
           updated_at?: string
           user_id?: string
         }

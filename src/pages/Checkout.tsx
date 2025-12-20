@@ -1,33 +1,213 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { CheckCircle, CreditCard, Truck } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+interface SavedAddress {
+  id: string;
+  label: string;
+  full_name: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  phone: string | null;
+  is_default: boolean;
+}
 
 const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('new');
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    address: '',
+    city: '',
+    zip: '',
+    country: 'United States',
+    phone: '',
+    saveAddress: true
+  });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error('Please sign in to checkout');
+      navigate('/auth', { state: { from: '/checkout' } });
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    const fetchSavedAddresses = async () => {
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('saved_addresses')
+        .select('*')
+        .order('is_default', { ascending: false });
+
+      if (data && data.length > 0) {
+        setSavedAddresses(data);
+        const defaultAddress = data.find(a => a.is_default) || data[0];
+        setSelectedAddressId(defaultAddress.id);
+      }
+    };
+
+    fetchSavedAddresses();
+  }, [user]);
+
+  const handleAddressSelect = (addressId: string) => {
+    setSelectedAddressId(addressId);
+    
+    if (addressId !== 'new') {
+      const address = savedAddresses.find(a => a.id === addressId);
+      if (address) {
+        const nameParts = address.full_name.split(' ');
+        setFormData({
+          ...formData,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          address: address.address,
+          city: address.city,
+          zip: address.postal_code,
+          country: address.country,
+          phone: address.phone || ''
+        });
+      }
+    } else {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: user?.email || '',
+        address: '',
+        city: '',
+        zip: '',
+        country: 'United States',
+        phone: '',
+        saveAddress: true
+      });
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    const { error } = await supabase
+      .from('saved_addresses')
+      .delete()
+      .eq('id', addressId);
+
+    if (error) {
+      toast.error('Failed to delete address');
+      return;
+    }
+
+    setSavedAddresses(savedAddresses.filter(a => a.id !== addressId));
+    if (selectedAddressId === addressId) {
+      setSelectedAddressId('new');
+    }
+    toast.success('Address deleted');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast.error('Please sign in to checkout');
+      navigate('/auth', { state: { from: '/checkout' } });
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Save address if requested and using new address
+      if (selectedAddressId === 'new' && formData.saveAddress) {
+        await supabase
+          .from('saved_addresses')
+          .insert({
+            user_id: user.id,
+            label: savedAddresses.length === 0 ? 'Home' : 'Address ' + (savedAddresses.length + 1),
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            address: formData.address,
+            city: formData.city,
+            postal_code: formData.zip,
+            country: formData.country,
+            phone: formData.phone || null,
+            is_default: savedAddresses.length === 0
+          });
+      }
 
-    setIsProcessing(false);
-    setOrderComplete(true);
-    clearCart();
-    toast.success('Order placed successfully!');
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          total_amount: totalPrice * 1.08, // Including tax
+          shipping_address: formData.address,
+          shipping_city: formData.city,
+          shipping_postal_code: formData.zip,
+          shipping_country: formData.country,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.id.split('-')[0], // Extract product ID from cart item ID
+        quantity: item.quantity,
+        price: item.price * item.quantity,
+        size: item.size || null
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      setOrderComplete(true);
+      clearCart();
+      toast.success('Order placed successfully!');
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to place order. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
   if (orderComplete) {
     return (
@@ -44,11 +224,16 @@ const Checkout = () => {
               <h1 className="font-heading text-3xl sm:text-4xl mb-4">Thank You!</h1>
               <p className="text-muted-foreground mb-8">
                 Your order has been confirmed and will be shipped soon.
-                We've sent a confirmation email with your order details.
+                You can track your order in "My Orders".
               </p>
-              <Button onClick={() => navigate('/shop')} size="lg">
-                Continue Shopping
-              </Button>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => navigate('/orders')} variant="outline">
+                  View My Orders
+                </Button>
+                <Button onClick={() => navigate('/shop')}>
+                  Continue Shopping
+                </Button>
+              </div>
             </div>
           </div>
         </main>
@@ -96,45 +281,174 @@ const Checkout = () => {
             {/* Order Form */}
             <div>
               <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Shipping */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Truck className="w-5 h-5 text-accent" />
-                    <h2 className="font-heading text-xl">Shipping Information</h2>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" required placeholder="John" />
+                {/* Saved Addresses */}
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-accent" />
+                        <h2 className="font-heading text-xl">Shipping Address</h2>
+                      </div>
                     </div>
+                    
+                    <RadioGroup
+                      value={selectedAddressId}
+                      onValueChange={handleAddressSelect}
+                      className="space-y-3"
+                    >
+                      {savedAddresses.map((address) => (
+                        <div
+                          key={address.id}
+                          className={`relative flex items-start gap-3 p-4 border rounded-lg transition-colors ${
+                            selectedAddressId === address.id
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border hover:border-muted-foreground/50'
+                          }`}
+                        >
+                          <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
+                          <label htmlFor={address.id} className="flex-1 cursor-pointer">
+                            <p className="font-medium">{address.label}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {address.full_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {address.address}, {address.city}, {address.postal_code}
+                            </p>
+                          </label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteAddress(address.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      <div
+                        className={`flex items-center gap-3 p-4 border rounded-lg transition-colors cursor-pointer ${
+                          selectedAddressId === 'new'
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border hover:border-muted-foreground/50'
+                        }`}
+                        onClick={() => handleAddressSelect('new')}
+                      >
+                        <RadioGroupItem value="new" id="new-address" />
+                        <label htmlFor="new-address" className="flex items-center gap-2 cursor-pointer">
+                          <Plus className="w-4 h-4" />
+                          Use a new address
+                        </label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {/* New Address Form */}
+                {(selectedAddressId === 'new' || savedAddresses.length === 0) && (
+                  <div className="space-y-4">
+                    {savedAddresses.length === 0 && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <Truck className="w-5 h-5 text-accent" />
+                        <h2 className="font-heading text-xl">Shipping Information</h2>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input
+                          id="firstName"
+                          required
+                          value={formData.firstName}
+                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                          placeholder="John"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          required
+                          value={formData.lastName}
+                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                          placeholder="Doe"
+                        />
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" required placeholder="Doe" />
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        required
+                        value={formData.email || user?.email || ''}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="john@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone (Optional)</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Input
+                        id="address"
+                        required
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        placeholder="123 Main Street"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          required
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          placeholder="New York"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="zip">ZIP Code</Label>
+                        <Input
+                          id="zip"
+                          required
+                          value={formData.zip}
+                          onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                          placeholder="10001"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="saveAddress"
+                        checked={formData.saveAddress}
+                        onChange={(e) => setFormData({ ...formData, saveAddress: e.target.checked })}
+                        className="rounded border-border"
+                      />
+                      <Label htmlFor="saveAddress" className="text-sm cursor-pointer">
+                        Save this address for future orders
+                      </Label>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" required placeholder="john@example.com" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" required placeholder="123 Main Street" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" required placeholder="New York" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zip">ZIP Code</Label>
-                      <Input id="zip" required placeholder="10001" />
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {/* Payment */}
                 <div className="space-y-4">
@@ -166,7 +480,7 @@ const Checkout = () => {
                   className="w-full h-14"
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+                  {isProcessing ? 'Processing...' : `Pay $${(totalPrice * 1.08).toFixed(2)}`}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
@@ -189,6 +503,9 @@ const Checkout = () => {
                     />
                     <div className="flex-1">
                       <h4 className="font-heading text-sm">{item.name}</h4>
+                      {item.size && (
+                        <p className="text-sm text-muted-foreground">Size: {item.size}</p>
+                      )}
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                       <p className="text-sm">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
