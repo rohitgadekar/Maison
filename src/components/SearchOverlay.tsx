@@ -91,7 +91,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             />
 
             {/* Search Content */}
-            <div className="absolute top-0 left-0 right-0 bg-[#FFFAF5] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-b border-accent/10 animate-in slide-in-from-top duration-700">
+            <div className="absolute top-0 left-0 right-0 max-h-screen lg:max-h-none overflow-y-auto lg:overflow-visible bg-[#FFFAF5] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-b border-accent/10 animate-in slide-in-from-top duration-700">
                 <div className="container mx-auto px-4 py-8 lg:py-12">
                     <div className="flex items-center gap-6 mb-12">
                         <div className="relative flex-1 group">

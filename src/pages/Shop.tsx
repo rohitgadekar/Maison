@@ -183,7 +183,7 @@ const Shop = () => {
       <main className="flex-1 pt-32 sm:pt-40 pb-24">
         {loading ? (
           <div className="container mx-auto px-4 lg:px-8">
-            <PremiumLoader />
+            <PremiumLoader  />
           </div>
         ) : (
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in">

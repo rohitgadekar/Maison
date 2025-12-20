@@ -10,6 +10,7 @@ import { SEO } from '@/components/SEO';
 import { Heart, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 const PremiumLoader = () => (
     <div className="flex flex-col items-center justify-center py-32 space-y-6">
@@ -24,6 +25,7 @@ const PremiumLoader = () => (
 
 const Wishlist = () => {
     const { wishlistItems, loading: wishlistLoading } = useWishlist();
+    const { user } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -105,7 +107,34 @@ const Wishlist = () => {
                                 />
                             ))}
                         </div>
+                    ) : !user ? (
+                        // Not logged in - show premium login prompt
+                        <div className="text-center py-40 bg-accent/5 rounded-[3rem] border border-accent/10 shadow-sm flex flex-col items-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+                            <div className="relative z-10">
+                                <div className="w-24 h-24 bg-gradient-to-br from-accent/10 to-accent/5 rounded-[2rem] flex items-center justify-center mb-10 mx-auto">
+                                    <Heart className="w-12 h-12 text-accent" />
+                                </div>
+                                <h3 className="font-heading text-4xl font-bold mb-6 tracking-tight">Access Your Archive</h3>
+                                <p className="text-muted-foreground text-lg font-medium italic mb-12 max-w-md mx-auto leading-relaxed">
+                                    Sign in to view your curated collection of saved artifacts and continue your journey through the Maison.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                                    <Button asChild className="h-16 px-12 rounded-full bg-[#111] text-white font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-accent transition-all">
+                                        <Link to="/auth">
+                                            Enter Archive <ArrowRight className="ml-3 w-4 h-4" />
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="outline" className="h-16 px-12 rounded-full border-accent/20 font-black uppercase tracking-widest text-[10px] hover:bg-accent/5">
+                                        <Link to="/shop">
+                                            Browse Collections
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
                     ) : (
+                        // Logged in but empty wishlist
                         <div className="text-center py-40 bg-white/50 rounded-[4rem] border border-dashed border-accent/10 flex flex-col items-center">
                             <div className="w-20 h-20 bg-accent/5 rounded-full flex items-center justify-center mb-10">
                                 <Heart className="w-10 h-10 text-accent/20" />
