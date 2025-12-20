@@ -6,6 +6,14 @@ export interface Product {
   category: string;
   image: string;
   badge?: string;
+  // Additional fields from Supabase
+  image_url?: string;
+  images?: string[];
+  inventory?: number;
+  is_active?: boolean;
+  sizes?: string[];
+  tag?: string;
+  created_at?: string;
 }
 
 export const products: Product[] = [

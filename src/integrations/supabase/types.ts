@@ -67,6 +67,8 @@ export type Database = {
           shipping_city: string | null
           shipping_country: string | null
           shipping_postal_code: string | null
+          shipping_phone: string | null
+          shipping_name: string | null
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
           tracking_number: string | null
@@ -80,6 +82,8 @@ export type Database = {
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_postal_code?: string | null
+          shipping_phone?: string | null
+          shipping_name?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount: number
           tracking_number?: string | null
@@ -93,6 +97,8 @@ export type Database = {
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_postal_code?: string | null
+          shipping_phone?: string | null
+          shipping_name?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
           tracking_number?: string | null
@@ -114,6 +120,8 @@ export type Database = {
           name: string
           price: number
           sizes: string[] | null
+          sku: string | null
+          tag: string | null
           updated_at: string
         }
         Insert: {
@@ -128,6 +136,8 @@ export type Database = {
           name: string
           price: number
           sizes?: string[] | null
+          sku?: string | null
+          tag?: string | null
           updated_at?: string
         }
         Update: {
@@ -142,6 +152,8 @@ export type Database = {
           name?: string
           price?: number
           sizes?: string[] | null
+          sku?: string | null
+          tag?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -159,6 +171,8 @@ export type Database = {
           postal_code: string | null
           updated_at: string
           user_id: string
+          preferred_currency: string | null
+          live_conversion: boolean | null
         }
         Insert: {
           address?: string | null
@@ -250,6 +264,95 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wishlist: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      collection_products: {
+        Row: {
+          collection_id: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          collection_id: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          collection_id?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_products_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

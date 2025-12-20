@@ -10,13 +10,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      position="bottom-left"
+      expand={true}
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+            "group toast group-[.toaster]:bg-white group-[.toaster]:text-primary group-[.toaster]:border-accent/10 group-[.toaster]:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group-[.toaster]:rounded-[2rem] group-[.toaster]:p-6 group-[.toaster]:backdrop-blur-xl group-[.toaster]:border",
+          description: "group-[.toast]:text-primary/40 group-[.toast]:text-[10px] group-[.toast]:font-medium group-[.toast]:italic",
+          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-white group-[.toast]:rounded-full group-[.toast]:text-[10px] group-[.toast]:font-black group-[.toast]:uppercase group-[.toast]:tracking-widest group-[.toast]:h-10 group-[.toast]:px-6",
+          cancelButton: "group-[.toast]:bg-accent/5 group-[.toast]:text-accent group-[.toast]:rounded-full group-[.toast]:text-[10px] group-[.toast]:font-black group-[.toast]:uppercase group-[.toast]:tracking-widest group-[.toast]:h-10 group-[.toast]:px-6",
+          title: "group-[.toast]:text-[11px] group-[.toast]:font-black group-[.toast]:uppercase group-[.toast]:tracking-[0.2em] group-[.toast]:text-primary",
         },
       }}
       {...props}

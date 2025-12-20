@@ -1,11 +1,15 @@
-import { products } from '@/data/products';
+import { Product } from '@/data/products';
 import { ProductCard } from './ProductCard';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
-export function FeaturedProducts() {
-  const featuredProducts = products.slice(0, 4);
+interface FeaturedProductsProps {
+  products?: Product[];
+}
+
+export function FeaturedProducts({ products: passedProducts }: FeaturedProductsProps) {
+  const featuredProducts = passedProducts || [];
 
   return (
     <section className="py-20 sm:py-28">

@@ -163,6 +163,12 @@ ON public.orders FOR UPDATE
 TO authenticated
 USING (public.has_role(auth.uid(), 'admin'));
 
+CREATE POLICY "Users can cancel own orders"
+ON public.orders FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id AND status = 'cancelled');
+
 -- Order items policies
 CREATE POLICY "Users can view own order items"
 ON public.order_items FOR SELECT

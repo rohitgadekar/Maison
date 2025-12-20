@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface CartItem {
   id: string;
+  productId: string;
   name: string;
   price: number;
   description: string;
@@ -12,7 +13,8 @@ interface CartItem {
 }
 
 interface ProductInput {
-  id: string;
+  id: string; // This will be the unique cart item ID (e.g. productId-size)
+  productId: string; // The original database ID
   name: string;
   price: number;
   description: string;

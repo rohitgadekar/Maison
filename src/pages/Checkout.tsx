@@ -11,13 +11,15 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin } from 'lucide-react';
+import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin, Check, Ticket, X as LucideX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { SEO } from '@/components/SEO';
+import { Price } from '@/components/Price';
 
 interface SavedAddress {
   id: string;
@@ -40,6 +42,7 @@ const Checkout = () => {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('new');
   const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -51,6 +54,157 @@ const Checkout = () => {
     phone: '',
     saveAddress: true
   });
+  const [shippingProviders, setShippingProviders] = useState<any[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+  const [isCouponsDialogOpen, setIsCouponsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchShippingProviders = async () => {
+      const { data, error } = await supabase
+        .from('shipping_providers' as any)
+        .select('*')
+        .eq('is_active', true);
+
+      if (!error && data) {
+        setShippingProviders(data);
+        if (data.length > 0) {
+          setSelectedProvider(data[0]);
+        }
+      } else {
+        // Fallback or handle error
+        const defaults = [
+          { id: '1', name: 'Maison Express', base_fee: 25.00, delivery_estimate: '2-3 Business Days', is_active: true },
+          { id: '2', name: 'Standard Logistics', base_fee: 12.00, delivery_estimate: '5-7 Business Days', is_active: true },
+        ];
+        setShippingProviders(defaults);
+        setSelectedProvider(defaults[0]);
+      }
+    };
+    fetchShippingProviders();
+  }, []);
+
+  const shippingFee = selectedProvider ? Number(selectedProvider.base_fee) : 0;
+  const taxAmount = totalPrice * 0.08;
+  const grandTotal = totalPrice + taxAmount + shippingFee - discountAmount;
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplyingCoupon(true);
+    try {
+      const { data, error } = await supabase
+        .from('coupons' as any)
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error('Invalid or expired archival key');
+        return;
+      }
+
+      if (totalPrice < Number((data as any).min_order_amount)) {
+        toast.error(`Order valuation must exceed $${(data as any).min_order_amount} for this key`);
+        return;
+      }
+
+      setAppliedCoupon(data);
+      let calculatedDiscount = 0;
+      if ((data as any).discount_type === 'percentage') {
+        calculatedDiscount = totalPrice * (Number((data as any).discount_value) / 100);
+      } else if ((data as any).discount_type === 'flat') {
+        calculatedDiscount = Number((data as any).discount_value);
+      } else if ((data as any).discount_type === 'free_delivery') {
+        calculatedDiscount = shippingFee;
+      }
+
+      setDiscountAmount(calculatedDiscount);
+      toast.success('Archival incentive applied');
+      setCouponCode('');
+      setIsCouponsDialogOpen(false);
+    } catch (err) {
+      console.error('Coupon error:', err);
+      toast.error('Failed to authenticate protocol');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleSelectCoupon = async (code: string) => {
+    setCouponCode(code);
+    // Use a small timeout to ensure state update before applying
+    setTimeout(() => {
+      handleApplyViaCode(code);
+    }, 10);
+  };
+
+  const handleApplyViaCode = async (code: string) => {
+    setIsApplyingCoupon(true);
+    try {
+      const { data, error } = await supabase
+        .from('coupons' as any)
+        .select('*')
+        .eq('code', code.toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return;
+
+      if (totalPrice < Number((data as any).min_order_amount)) return;
+
+      setAppliedCoupon(data);
+      let calculatedDiscount = 0;
+      if ((data as any).discount_type === 'percentage') {
+        calculatedDiscount = totalPrice * (Number((data as any).discount_value) / 100);
+      } else if ((data as any).discount_type === 'flat') {
+        calculatedDiscount = Number((data as any).discount_value);
+      } else if ((data as any).discount_type === 'free_delivery') {
+        calculatedDiscount = shippingFee;
+      }
+
+      setDiscountAmount(calculatedDiscount);
+      toast.success('Archival incentive applied');
+      setCouponCode('');
+      setIsCouponsDialogOpen(false);
+    } catch (err) {
+      console.error('Coupon error:', err);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      const { data } = await supabase
+        .from('coupons' as any)
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (data) setAvailableCoupons(data);
+    };
+    fetchCoupons();
+  }, []);
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponCode('');
+  };
+
+  // Update discount amount if shipping provider changes while a free delivery coupon is applied
+  useEffect(() => {
+    if (appliedCoupon?.discount_type === 'free_delivery') {
+      setDiscountAmount(shippingFee);
+    }
+  }, [shippingFee, appliedCoupon]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -72,6 +226,20 @@ const Checkout = () => {
         setSavedAddresses(data);
         const defaultAddress = data.find(a => a.is_default) || data[0];
         setSelectedAddressId(defaultAddress.id);
+
+        // Populate formData with default address
+        const nameParts = defaultAddress.full_name.split(' ');
+        setFormData(prev => ({
+          ...prev,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          address: defaultAddress.address,
+          city: defaultAddress.city,
+          zip: defaultAddress.postal_code,
+          country: defaultAddress.country,
+          phone: defaultAddress.phone || '',
+          email: user.email || ''
+        }));
       }
     };
 
@@ -80,7 +248,8 @@ const Checkout = () => {
 
   const handleAddressSelect = (addressId: string) => {
     setSelectedAddressId(addressId);
-    
+    setIsEditing(false); // Reset editing mode when selecting a different address
+
     if (addressId !== 'new') {
       const address = savedAddresses.find(a => a.id === addressId);
       if (address) {
@@ -131,7 +300,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error('Please sign in to checkout');
       navigate('/auth', { state: { from: '/checkout' } });
@@ -141,33 +310,54 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Save address if requested and using new address
-      if (selectedAddressId === 'new' && formData.saveAddress) {
-        await supabase
-          .from('saved_addresses')
-          .insert({
-            user_id: user.id,
-            label: savedAddresses.length === 0 ? 'Home' : 'Address ' + (savedAddresses.length + 1),
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            address: formData.address,
-            city: formData.city,
-            postal_code: formData.zip,
-            country: formData.country,
-            phone: formData.phone || null,
-            is_default: savedAddresses.length === 0
-          });
+      // Save/Update address if requested
+      if (formData.saveAddress) {
+        if (selectedAddressId === 'new') {
+          await supabase
+            .from('saved_addresses')
+            .insert({
+              user_id: user.id,
+              label: savedAddresses.length === 0 ? 'Home' : 'Address ' + (savedAddresses.length + 1),
+              full_name: `${formData.firstName} ${formData.lastName}`,
+              address: formData.address,
+              city: formData.city,
+              postal_code: formData.zip,
+              country: formData.country,
+              phone: formData.phone || null,
+              is_default: savedAddresses.length === 0
+            });
+        } else if (isEditing) {
+          // Update the existing saved address
+          await supabase
+            .from('saved_addresses')
+            .update({
+              full_name: `${formData.firstName} ${formData.lastName}`,
+              address: formData.address,
+              city: formData.city,
+              postal_code: formData.zip,
+              country: formData.country,
+              phone: formData.phone || null,
+            })
+            .eq('id', selectedAddressId);
+        }
       }
 
-      // Create order
+      // Create order with order-specific details
       const { data: order, error: orderError } = await supabase
-        .from('orders')
+        .from('orders' as any)
         .insert({
           user_id: user.id,
-          total_amount: totalPrice * 1.08, // Including tax
+          total_amount: grandTotal,
           shipping_address: formData.address,
           shipping_city: formData.city,
           shipping_postal_code: formData.zip,
           shipping_country: formData.country,
+          shipping_phone: formData.phone || null,
+          shipping_name: `${formData.firstName} ${formData.lastName}`,
+          shipping_method_name: selectedProvider?.name || 'Standard Logistics',
+          shipping_fee: shippingFee,
+          coupon_id: appliedCoupon?.id || null,
+          discount_amount: discountAmount,
           status: 'pending'
         })
         .select()
@@ -175,10 +365,9 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: order.id,
-        product_id: item.id.split('-')[0], // Extract product ID from cart item ID
+      const orderItemsData = items.map(item => ({
+        order_id: (order as any).id,
+        product_id: item.productId,
         quantity: item.quantity,
         price: item.price * item.quantity,
         size: item.size || null
@@ -186,7 +375,7 @@ const Checkout = () => {
 
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItemsData);
 
       if (itemsError) throw itemsError;
 
@@ -201,37 +390,59 @@ const Checkout = () => {
     }
   };
 
+  const PremiumLoader = () => (
+    <div className="flex flex-col items-center justify-center py-32 space-y-6">
+      <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
+      </div>
+      <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
+        Securing Session...
+      </span>
+    </div>
+  );
+
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+      <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
+        <Header />
+        <CartDrawer />
+        <main className="flex-1 pt-32 sm:pt-48 pb-32">
+          <PremiumLoader />
+        </main>
+        <Footer />
       </div>
     );
   }
 
   if (orderComplete) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
         <Header />
         <CartDrawer />
-        
-        <main className="pt-24 sm:pt-28 pb-20">
+
+        <main className="flex-1 pt-32 sm:pt-48 pb-32">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-lg mx-auto text-center py-16">
-              <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-accent" />
+              <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+                <CheckCircle className="w-12 h-12 text-accent" />
               </div>
-              <h1 className="font-heading text-3xl sm:text-4xl mb-4">Thank You!</h1>
-              <p className="text-muted-foreground mb-8">
-                Your order has been confirmed and will be shipped soon.
-                You can track your order in "My Orders".
+              <h1 className="font-heading text-5xl sm:text-6xl font-bold mb-8 tracking-tighter">Success<span className="italic font-light text-accent">.</span></h1>
+              <p className="text-xl text-primary/50 mb-12 italic font-medium">
+                Your acquisition has been recorded in the Maison archive. We will notify you when logistics are initiated.
               </p>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={() => navigate('/orders')} variant="outline">
-                  View My Orders
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  onClick={() => navigate('/orders')}
+                  variant="outline"
+                  className="h-16 px-10 rounded-full border-accent/10 font-black uppercase tracking-widest text-[10px]"
+                >
+                  View Registry
                 </Button>
-                <Button onClick={() => navigate('/shop')}>
-                  Continue Shopping
+                <Button
+                  onClick={() => navigate('/shop')}
+                  className="h-16 px-10 rounded-full bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-black"
+                >
+                  Return to Archive
                 </Button>
               </div>
             </div>
@@ -245,19 +456,22 @@ const Checkout = () => {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
         <Header />
         <CartDrawer />
-        
-        <main className="pt-24 sm:pt-28 pb-20">
+
+        <main className="flex-1 pt-32 sm:pt-48 pb-32">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-lg mx-auto text-center py-16">
-              <h1 className="font-heading text-3xl sm:text-4xl mb-4">Your cart is empty</h1>
-              <p className="text-muted-foreground mb-8">
-                Add some items to your cart to proceed with checkout.
+              <h1 className="font-heading text-5xl sm:text-6xl font-bold mb-8 tracking-tighter">Collection Empty<span className="italic font-light text-accent">.</span></h1>
+              <p className="text-xl text-primary/50 mb-12 italic font-medium">
+                Your current session contains no artifacts to acquire.
               </p>
-              <Button onClick={() => navigate('/shop')} size="lg">
-                Browse Products
+              <Button
+                onClick={() => navigate('/shop')}
+                className="h-16 px-12 rounded-full bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-black"
+              >
+                Browse Collections
               </Button>
             </div>
           </div>
@@ -269,266 +483,432 @@ const Checkout = () => {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
+      <SEO title="Secure Acquisition" description="Complete your secure archival acquisition." />
       <Header />
       <CartDrawer />
-      
-      <main className="pt-24 sm:pt-28 pb-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="font-heading text-3xl sm:text-4xl text-center mb-12">Checkout</h1>
 
-          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <main className="flex-1 pt-32 sm:pt-48 pb-32">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center mb-20">
+            <span className="text-accent uppercase tracking-[0.5em] text-[10px] font-black mb-6 block">Final Step</span>
+            <h1 className="font-heading text-6xl sm:text-7xl font-bold mb-6 tracking-tighter">
+              Secure <span className="italic font-light text-accent">Acquisition.</span>
+            </h1>
+          </div>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20">
             {/* Order Form */}
-            <div>
-              <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-12">
+              <form onSubmit={handleSubmit} className="space-y-12">
                 {/* Saved Addresses */}
                 {savedAddresses.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-accent" />
-                        <h2 className="font-heading text-xl">Shipping Address</h2>
-                      </div>
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-4">
+                      <MapPin className="w-6 h-6 text-accent" />
+                      <h2 className="font-heading text-2xl font-bold tracking-tight uppercase">Shipping Destination</h2>
                     </div>
-                    
+
                     <RadioGroup
                       value={selectedAddressId}
                       onValueChange={handleAddressSelect}
-                      className="space-y-3"
+                      className="grid grid-cols-1 gap-4"
                     >
                       {savedAddresses.map((address) => (
                         <div
                           key={address.id}
-                          className={`relative flex items-start gap-3 p-4 border rounded-lg transition-colors ${
-                            selectedAddressId === address.id
-                              ? 'border-accent bg-accent/5'
-                              : 'border-border hover:border-muted-foreground/50'
-                          }`}
+                          className={`relative flex items-start gap-4 p-8 rounded-[2rem] border transition-all duration-500 cursor-pointer group ${selectedAddressId === address.id
+                            ? 'border-accent bg-white shadow-xl'
+                            : 'border-accent/10 bg-white/50 hover:bg-white hover:border-accent/30'
+                            }`}
+                          onClick={() => handleAddressSelect(address.id)}
                         >
                           <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
-                          <label htmlFor={address.id} className="flex-1 cursor-pointer">
-                            <p className="font-medium">{address.label}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {address.full_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {address.address}, {address.city}, {address.postal_code}
-                            </p>
-                          </label>
+                          <div className="flex-1">
+                            <label htmlFor={address.id} className="cursor-pointer">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-2">{address.label}</p>
+                              <p className="font-bold text-lg mb-1">{address.full_name}</p>
+                              <p className="text-muted-foreground italic font-medium">
+                                {address.address}, {address.city}, {address.postal_code}
+                              </p>
+                              {address.phone && (
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mt-1">Ref: {address.phone}</p>
+                              )}
+                            </label>
+
+                            {selectedAddressId === address.id && !isEditing && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                                className="mt-4 text-[10px] font-black uppercase tracking-widest text-accent hover:text-primary transition-colors flex items-center gap-2"
+                              >
+                                Edit Archival Details
+                              </button>
+                            )}
+                          </div>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteAddress(address.id)}
-                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteAddress(address.id); }}
+                            className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-full hover:bg-rose-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       ))}
-                      
+
                       <div
-                        className={`flex items-center gap-3 p-4 border rounded-lg transition-colors cursor-pointer ${
-                          selectedAddressId === 'new'
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border hover:border-muted-foreground/50'
-                        }`}
+                        className={`flex items-center gap-4 p-8 rounded-[2rem] border border-dashed transition-all duration-500 cursor-pointer ${selectedAddressId === 'new'
+                          ? 'border-accent bg-white shadow-xl'
+                          : 'border-accent/20 bg-transparent hover:bg-white/50'
+                          }`}
                         onClick={() => handleAddressSelect('new')}
                       >
                         <RadioGroupItem value="new" id="new-address" />
-                        <label htmlFor="new-address" className="flex items-center gap-2 cursor-pointer">
+                        <label htmlFor="new-address" className="flex items-center gap-3 cursor-pointer font-bold uppercase tracking-widest text-[10px] text-accent">
                           <Plus className="w-4 h-4" />
-                          Use a new address
+                          New Archival Location
                         </label>
                       </div>
                     </RadioGroup>
                   </div>
                 )}
 
-                {/* New Address Form */}
-                {(selectedAddressId === 'new' || savedAddresses.length === 0) && (
-                  <div className="space-y-4">
-                    {savedAddresses.length === 0 && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <Truck className="w-5 h-5 text-accent" />
-                        <h2 className="font-heading text-xl">Shipping Information</h2>
-                      </div>
-                    )}
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
+                {/* Address Modification Form */}
+                {(selectedAddressId === 'new' || savedAddresses.length === 0 || isEditing) && (
+                  <div className="bg-white p-10 sm:p-12 rounded-[3.5rem] shadow-sm border border-accent/5 space-y-8 animate-fade-in text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-accent/5 rounded-full mb-6">
+                      <Truck className="w-8 h-8 text-accent" />
+                    </div>
+                    <h2 className="font-heading text-3xl font-bold tracking-tight mb-8">
+                      {isEditing ? 'Modify Logistics' : 'Delivery Coordinates'}
+                    </h2>
+
+                    <div className="grid grid-cols-2 gap-6 text-left">
+                      <div className="space-y-3">
+                        <Label htmlFor="firstName" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">First Name</Label>
                         <Input
                           id="firstName"
                           required
                           value={formData.firstName}
                           onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                           placeholder="John"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
+                      <div className="space-y-3">
+                        <Label htmlFor="lastName" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">Last Name</Label>
                         <Input
                           id="lastName"
                           required
                           value={formData.lastName}
                           onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                           placeholder="Doe"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
                         />
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        required
-                        value={formData.email || user?.email || ''}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="john@example.com"
-                      />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
+                      <div className="space-y-3">
+                        <Label htmlFor="email" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">Email Record</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="john@example.com"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <Label htmlFor="phone" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">Logistics Phone</Label>
+                        <Input
+                          id="phone"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="+1 (555) 000-0000"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone (Optional)</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
+                    <div className="space-y-3 text-left">
+                      <Label htmlFor="address" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">Street Address</Label>
                       <Input
                         id="address"
                         required
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        placeholder="123 Main Street"
+                        placeholder="123 Maison Blvd"
+                        className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
                       />
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
+
+                    <div className="grid grid-cols-2 gap-6 text-left">
+                      <div className="space-y-3">
+                        <Label htmlFor="city" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">City</Label>
                         <Input
                           id="city"
                           required
                           value={formData.city}
                           onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          placeholder="New York"
+                          placeholder="Paris"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="zip">ZIP Code</Label>
+                      <div className="space-y-3">
+                        <Label htmlFor="zip" className="ml-2 text-[10px] font-black uppercase tracking-widest text-accent">Postal Code</Label>
                         <Input
                           id="zip"
                           required
                           value={formData.zip}
                           onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                          placeholder="10001"
+                          placeholder="75001"
+                          className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-medium"
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="saveAddress"
-                        checked={formData.saveAddress}
-                        onChange={(e) => setFormData({ ...formData, saveAddress: e.target.checked })}
-                        className="rounded border-border"
-                      />
-                      <Label htmlFor="saveAddress" className="text-sm cursor-pointer">
-                        Save this address for future orders
-                      </Label>
+                    <div className="flex items-center gap-4 pt-8 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, saveAddress: !formData.saveAddress })}
+                        className="flex items-center gap-4 group cursor-pointer outline-none"
+                      >
+                        <div className={`w-10 h-10 rounded-2xl border border-accent/20 flex items-center justify-center transition-all duration-700 ${formData.saveAddress ? 'bg-accent shadow-[0_10px_30px_-10px_rgba(200,80,50,0.5)] border-accent' : 'bg-transparent overflow-hidden'}`}>
+                          {formData.saveAddress ? (
+                            <Check className="w-5 h-5 text-white animate-in zoom-in duration-500" />
+                          ) : (
+                            <div className="w-1.5 h-1.5 bg-accent/20 rounded-full group-hover:scale-[8] transition-all duration-700" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-1 italic">Logistics Registry</p>
+                          <Label className="text-xs font-bold uppercase tracking-widest text-primary/60 cursor-pointer group-hover:text-primary transition-colors">
+                            {isEditing ? 'Sync Archival Record' : 'Commit to Personal Archive'}
+                          </Label>
+                        </div>
+                      </button>
                     </div>
                   </div>
                 )}
 
                 {/* Payment */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <CreditCard className="w-5 h-5 text-accent" />
-                    <h2 className="font-heading text-xl">Payment Details</h2>
+                <div className="bg-[#111] text-white p-12 rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                  <div className="flex items-center gap-4 mb-10 relative z-10">
+                    <CreditCard className="w-8 h-8 text-accent" />
+                    <h2 className="font-heading text-2xl font-bold tracking-tight uppercase italic">Secure Vault</h2>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input id="cardNumber" required placeholder="4242 4242 4242 4242" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expiry">Expiry Date</Label>
-                      <Input id="expiry" required placeholder="MM/YY" />
+
+                  <div className="space-y-8 relative z-10">
+                    <div className="space-y-3">
+                      <Label htmlFor="cardNumber" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">Card Artifact</Label>
+                      <Input id="cardNumber" required placeholder="4242 4242 4242 4242" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cvc">CVC</Label>
-                      <Input id="cvc" required placeholder="123" />
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="expiry" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">Expiry</Label>
+                        <Input id="expiry" required placeholder="MM/YY" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
+                      </div>
+                      <div className="space-y-3">
+                        <Label htmlFor="cvc" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">CVC</Label>
+                        <Input id="cvc" required placeholder="123" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="w-full h-14"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? 'Processing...' : `Pay $${(totalPrice * 1.08).toFixed(2)}`}
-                </Button>
+                <div className="flex flex-col gap-4">
+                  <Button
+                    type="submit"
+                    className="w-full h-20 bg-primary text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all rounded-[2.5rem] mt-4"
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <div className="flex items-center gap-4">
+                        <div className="w-4 h-[1px] bg-white relative overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
+                        </div>
+                        <span>Verifying Archive...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 justify-center">
+                        Confirm Acquisition (<Price amount={grandTotal} />)
+                      </div>
+                    )}
+                  </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
-                  This is a demo checkout. No real payment will be processed.
-                </p>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        handleAddressSelect(selectedAddressId); // Reset to original values
+                      }}
+                      className="text-[10px] font-black uppercase tracking-widest text-primary/30 hover:text-primary transition-colors"
+                    >
+                      Cancel Modifications
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
             {/* Order Summary */}
-            <div className="lg:pl-8 lg:border-l border-border">
-              <h2 className="font-heading text-xl mb-6">Order Summary</h2>
-              
-              <div className="space-y-4 mb-6">
-                {items.map((item) => (
-                  <div key={item.id} className="flex gap-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-20 object-cover rounded-lg bg-card"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-heading text-sm">{item.name}</h4>
-                      {item.size && (
-                        <p className="text-sm text-muted-foreground">Size: {item.size}</p>
-                      )}
-                      <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                      <p className="text-sm">${(item.price * item.quantity).toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-12">
+              <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-accent/5 sticky top-32">
+                <h2 className="font-heading text-3xl font-bold mb-12 tracking-tight uppercase text-center italic">The <span className="text-accent not-italic">Archive</span> List</h2>
 
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>${totalPrice.toFixed(2)}</span>
+                <div className="space-y-8 mb-12 max-h-[400px] overflow-y-auto pr-4 scrollbar-hide">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex gap-8 group">
+                      <div className="w-24 h-32 rounded-2xl overflow-hidden bg-accent/5 flex-shrink-0">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-700"
+                        />
+                      </div>
+                      <div className="flex-1 py-2 flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-heading text-xl font-bold mb-1 tracking-tighter">{item.name}</h4>
+                          <div className="flex gap-4">
+                            {item.size && (
+                              <span className="text-[10px] font-black uppercase tracking-widest text-accent italic">Dim: {item.size}</span>
+                            )}
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/30 font-medium">Qty: {item.quantity}</span>
+                          </div>
+                        </div>
+                        <Price amount={item.price * item.quantity} className="text-xl font-black" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>Free</span>
+
+                <div className="space-y-6 pt-10 border-t border-accent/10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-primary/30 uppercase tracking-[0.3em] text-[10px] font-black">Gross Valuation</span>
+                    <Price amount={totalPrice} className="font-bold text-lg" />
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium">
+                    <span className="text-primary/30 uppercase tracking-[0.3em] text-[10px] font-black">Logistics</span>
+                    <Price amount={shippingFee} className="font-bold text-lg" />
+                  </div>
+
+                  {shippingProviders.length > 1 && (
+                    <div className="py-4 space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-accent">Select Logistics Partner</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {shippingProviders.map(p => (
+                          <div
+                            key={p.id}
+                            onClick={() => setSelectedProvider(p)}
+                            className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${selectedProvider?.id === p.id
+                              ? 'border-accent bg-accent/5 shadow-sm'
+                              : 'border-accent/10 hover:border-accent/30'
+                              }`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-primary">{p.name}</p>
+                                <p className="text-[9px] font-medium italic text-primary/40">{p.delivery_estimate}</p>
+                              </div>
+                              <Price amount={Number(p.base_fee)} className="text-sm font-black" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-sm font-medium">
+                    <span className="text-primary/30 uppercase tracking-[0.3em] text-[10px] font-black">Gross Value</span>
+                    <Price amount={totalPrice} className="font-bold text-lg" />
+                  </div>
+
+                  <div className="flex justify-between items-center text-sm font-medium">
+                    <span className="text-primary/30 uppercase tracking-[0.3em] text-[10px] font-black">Logistics ({selectedProvider?.name || 'Standard'})</span>
+                    <Price amount={shippingFee} className="font-bold text-lg" />
+                  </div>
+
+                  <div className="flex justify-between items-center text-sm font-medium">
+                    <span className="text-primary/30 uppercase tracking-[0.3em] text-[10px] font-black">Administrative (8%)</span>
+                    <Price amount={taxAmount} className="font-bold text-lg" />
+                  </div>
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-sm font-medium text-accent">
+                      <span className="uppercase tracking-[0.3em] text-[10px] font-black">Incentive Applied {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
+                      <div className="font-bold text-lg flex items-center">-<Price amount={discountAmount} /></div>
+                    </div>
+                  )}
+
+                  {/* Promo Code Input */}
+                  {!appliedCoupon ? (
+                    <div className="pt-6 space-y-4">
+                      <div className="relative group/coupon">
+                        <Input
+                          placeholder="Archival Key"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          className="h-14 bg-accent/5 border-dashed border-accent/20 rounded-2xl px-6 pr-32 focus:ring-accent focus:bg-white transition-all font-black uppercase tracking-widest placeholder:text-[10px] placeholder:font-black"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={isApplyingCoupon || !couponCode}
+                          className="absolute right-2 top-2 h-10 px-6 bg-[#111] text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-accent transition-all disabled:opacity-50"
+                        >
+                          {isApplyingCoupon ? 'Verifying...' : 'Apply Artifact'}
+                        </button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsCouponsDialogOpen(true)}
+                        className="w-full h-10 border border-accent/10 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all gap-2"
+                      >
+                        <Ticket className="w-3 h-3" />
+                        View Available Incentives
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="pt-6">
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-accent text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex items-center gap-3">
+                          <Ticket className="w-5 h-5 opacity-50" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">{appliedCoupon.code}</p>
+                            <p className="text-[8px] font-medium italic opacity-70">Privilege Authenticated</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeCoupon}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+                        >
+                          <LucideX className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-8 border-t border-accent/20">
+                    <span className="font-heading text-2xl font-black uppercase tracking-tighter">Net Total</span>
+                    <Price amount={grandTotal} className="text-4xl font-black text-accent tracking-tighter leading-none" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax</span>
-                  <span>${(totalPrice * 0.08).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-heading pt-2 border-t border-border">
-                  <span>Total</span>
-                  <span>${(totalPrice * 1.08).toFixed(2)}</span>
+
+                <div className="mt-12 bg-accent/5 p-8 rounded-[2rem] border border-accent/10 relative overflow-hidden group/trace">
+                  <div className="absolute inset-0 bg-accent/5 translate-y-full group-hover/trace:translate-y-0 transition-transform duration-700" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent text-center relative z-10 italic">
+                    Authenticated Archival Transfer
+                  </p>
                 </div>
               </div>
             </div>
@@ -537,6 +917,120 @@ const Checkout = () => {
       </main>
 
       <Footer />
+
+      {/* Available Coupons Dialog */}
+      <Dialog open={isCouponsDialogOpen} onOpenChange={setIsCouponsDialogOpen}>
+        <DialogContent className="max-w-2xl rounded-[2rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-3xl p-0 overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.1)] border">
+          <div className="p-10 sm:p-14 relative">
+            {/* Background Decorations */}
+            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
+              <Ticket className="w-64 h-64 text-accent rotate-12" />
+            </div>
+
+            <DialogHeader className="mb-12 relative z-10">
+              <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Curated Ledger</span>
+              <DialogTitle className="font-heading text-4xl sm:text-5xl font-black tracking-tighter leading-tight">
+                Available <span className="italic font-light text-accent">Privileges.</span>
+              </DialogTitle>
+              <p className="text-[11px] text-primary/30 font-medium italic mt-2 max-w-sm">
+                Authenticating your archival status reveals exclusive valuation incentives. Select a privilege to evolve your acquisition.
+              </p>
+            </DialogHeader>
+
+            <div className="space-y-4 max-h-[400px] py-2 overflow-y-auto pr-2 custom-scrollbar">
+              {availableCoupons.length === 0 ? (
+                <div className="text-center py-20 bg-accent/[0.02] rounded-[2.5rem] border border-dashed border-accent/10">
+                  <Ticket className="w-16 h-16 mx-auto text-accent/10 mb-6 animate-pulse" />
+                  <p className="text-[12px] font-black uppercase tracking-[0.4em] text-primary/30 italic">Registry contains no active archival keys</p>
+                </div>
+              ) : (
+                ([...availableCoupons]
+                  .sort((a, b) => {
+                    const aEligible = totalPrice >= Number(a.min_order_amount);
+                    const bEligible = totalPrice >= Number(b.min_order_amount);
+                    if (aEligible && !bEligible) return -1;
+                    if (!aEligible && bEligible) return 1;
+                    return 0;
+                  }))
+                  .map((coupon) => {
+                    const isEligible = totalPrice >= Number(coupon.min_order_amount);
+                    return (
+                      <div
+                        key={coupon.id}
+                        onClick={() => isEligible && handleSelectCoupon(coupon.code)}
+                        className={`group relative p-8 rounded-[2.5rem] border transition-all duration-700 ${isEligible
+                          ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
+                          : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
+                          }`}
+                      >
+                        {/* Status Badge */}
+                        <div className="absolute top-6 right-8">
+                          {isEligible ? (
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-accent bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Active</span>
+                          ) : (
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/30 bg-primary/5 px-4 py-1.5 rounded-full border border-primary/5">Restricted</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isEligible ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
+                            <Ticket className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <span className={`text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${isEligible ? 'text-primary' : 'text-primary/40'}`}>
+                              {coupon.code}
+                            </span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-primary/20 italic">Archival Privilege Code</span>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] font-medium italic text-primary/50 mb-8 leading-relaxed max-w-[80%]">
+                          {coupon.description}
+                        </p>
+
+                        <div className={`p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 ${isEligible ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
+                          <div className="flex flex-col">
+                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Benefit Tier</span>
+                            <span className="text-sm font-black text-accent tracking-tighter uppercase text-left">
+                              {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% Valuation Drop` :
+                                coupon.discount_type === 'free_delivery' ? 'Complimentary Logistics' :
+                                  <div className="flex items-center gap-1"><Price amount={Number(coupon.discount_value)} /> Direct Credit</div>}
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Acquisition Threshold</span>
+                            <span className={`text-[10px] font-black ${isEligible ? 'text-primary/60' : 'text-rose-500/80'}`}>
+                              <Price amount={Number(coupon.min_order_amount)} />
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Hover Overlay Icon */}
+                        {isEligible && (
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none scale-50 group-hover:scale-100">
+                            <div className="w-20 h-20 bg-accent/5 backdrop-blur-md rounded-full flex items-center justify-center border border-accent/10">
+                              <Check className="w-8 h-8 text-accent stroke-[3px]" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+
+            <div className="mt-12 relative z-10">
+              <Button
+                variant="outline"
+                onClick={() => setIsCouponsDialogOpen(false)}
+                className="w-full h-16 rounded-[1.5rem] border-accent/10 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-black hover:text-white transition-all shadow-sm"
+              >
+                Return to Registry
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
