@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
   Select,
@@ -16,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Eye } from 'lucide-react';
+import { Eye, Truck } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -27,6 +29,7 @@ interface Order {
   shipping_city: string | null;
   shipping_postal_code: string | null;
   shipping_country: string | null;
+  tracking_number: string | null;
   created_at: string;
 }
 
@@ -46,6 +49,8 @@ interface Profile {
   email: string | null;
 }
 
+type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +58,9 @@ const AdminOrders = () => {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [customerProfile, setCustomerProfile] = useState<Profile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isTrackingDialogOpen, setIsTrackingDialogOpen] = useState(false);
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ orderId: string; status: OrderStatus } | null>(null);
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -95,10 +103,30 @@ const AdminOrders = () => {
     setIsDialogOpen(true);
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled') => {
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    // If changing to shipped, require tracking number
+    if (newStatus === 'shipped') {
+      const order = orders.find(o => o.id === orderId);
+      if (!order?.tracking_number) {
+        setPendingStatusChange({ orderId, status: newStatus });
+        setTrackingNumber('');
+        setIsTrackingDialogOpen(true);
+        return;
+      }
+    }
+
+    await updateOrderStatus(orderId, newStatus);
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, tracking?: string) => {
+    const updateData: { status: OrderStatus; tracking_number?: string } = { status: newStatus };
+    if (tracking) {
+      updateData.tracking_number = tracking;
+    }
+
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update(updateData)
       .eq('id', orderId);
 
     if (error) {
@@ -110,7 +138,21 @@ const AdminOrders = () => {
     fetchOrders();
 
     if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+      setSelectedOrder({ ...selectedOrder, status: newStatus, tracking_number: tracking || selectedOrder.tracking_number });
+    }
+  };
+
+  const handleTrackingSubmit = async () => {
+    if (!trackingNumber.trim()) {
+      toast.error('Please enter a tracking number');
+      return;
+    }
+
+    if (pendingStatusChange) {
+      await updateOrderStatus(pendingStatusChange.orderId, pendingStatusChange.status, trackingNumber);
+      setIsTrackingDialogOpen(false);
+      setPendingStatusChange(null);
+      setTrackingNumber('');
     }
   };
 
@@ -158,6 +200,7 @@ const AdminOrders = () => {
                   <th className="text-left px-6 py-4 text-sm font-medium">Order ID</th>
                   <th className="text-left px-6 py-4 text-sm font-medium">Date</th>
                   <th className="text-left px-6 py-4 text-sm font-medium">Status</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium">Tracking</th>
                   <th className="text-left px-6 py-4 text-sm font-medium">Total</th>
                   <th className="text-left px-6 py-4 text-sm font-medium">Actions</th>
                 </tr>
@@ -178,7 +221,7 @@ const AdminOrders = () => {
                     <td className="px-6 py-4">
                       <Select
                         value={order.status}
-                        onValueChange={(value) => handleStatusChange(order.id, value as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled')}
+                        onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
                       >
                         <SelectTrigger className="w-[140px]">
                           <SelectValue>
@@ -195,6 +238,15 @@ const AdminOrders = () => {
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {order.tracking_number ? (
+                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                          {order.tracking_number}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 font-medium">
                       ${Number(order.total_amount).toFixed(2)}
@@ -255,7 +307,7 @@ const AdminOrders = () => {
                 <h4 className="font-medium mb-2">Status</h4>
                 <Select
                   value={selectedOrder.status}
-                  onValueChange={(value) => handleStatusChange(selectedOrder.id, value as 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled')}
+                  onValueChange={(value) => handleStatusChange(selectedOrder.id, value as OrderStatus)}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue>
@@ -273,6 +325,16 @@ const AdminOrders = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Tracking Number */}
+              {selectedOrder.tracking_number && (
+                <div>
+                  <h4 className="font-medium mb-2">Tracking Number</h4>
+                  <p className="font-mono text-sm bg-muted px-3 py-2 rounded">
+                    {selectedOrder.tracking_number}
+                  </p>
+                </div>
+              )}
 
               {/* Order Items */}
               <div>
@@ -309,6 +371,49 @@ const AdminOrders = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Tracking Number Dialog */}
+      <Dialog open={isTrackingDialogOpen} onOpenChange={setIsTrackingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="w-5 h-5" />
+              Add Tracking Number
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              A tracking number is required to mark this order as shipped.
+            </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tracking">Tracking Number</Label>
+              <Input
+                id="tracking"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                placeholder="e.g., 1Z999AA10123456784"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={handleTrackingSubmit} className="flex-1">
+                Save & Update Status
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsTrackingDialogOpen(false);
+                  setPendingStatusChange(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

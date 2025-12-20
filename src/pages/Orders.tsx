@@ -6,7 +6,8 @@ import { CartDrawer } from '@/components/CartDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { Package, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Package, ArrowLeft, Truck, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface Order {
@@ -16,6 +17,7 @@ interface Order {
   created_at: string;
   shipping_address: string | null;
   shipping_city: string | null;
+  tracking_number: string | null;
 }
 
 interface OrderItem {
@@ -101,6 +103,23 @@ const Orders = () => {
     }
   };
 
+  const getStatusMessage = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Your order is being reviewed';
+      case 'processing':
+        return 'Your order is being prepared';
+      case 'shipped':
+        return 'Your order is on the way';
+      case 'delivered':
+        return 'Your order has been delivered';
+      case 'cancelled':
+        return 'This order has been cancelled';
+      default:
+        return '';
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -160,10 +179,37 @@ const Orders = () => {
                         })}
                       </p>
                     </div>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </Badge>
+                    <div className="text-right">
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {getStatusMessage(order.status)}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Tracking Info */}
+                  {order.tracking_number && (order.status === 'shipped' || order.status === 'delivered') && (
+                    <div className="bg-accent/10 rounded-lg p-4 mb-6 flex items-center gap-3">
+                      <Truck className="w-5 h-5 text-accent flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Tracking Number</p>
+                        <p className="text-sm text-muted-foreground font-mono">{order.tracking_number}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Open generic tracking URL - in production, this would be carrier-specific
+                          window.open(`https://www.google.com/search?q=track+package+${order.tracking_number}`, '_blank');
+                        }}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        Track
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Order Items */}
                   <div className="space-y-4 mb-6">

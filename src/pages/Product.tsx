@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ProductData {
   id: string;
@@ -15,6 +15,7 @@ interface ProductData {
   description: string | null;
   price: number;
   image_url: string | null;
+  images: string[] | null;
   category: string;
   sizes: string[] | null;
   inventory: number;
@@ -29,6 +30,8 @@ const Product = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [similarProducts, setSimilarProducts] = useState<ProductData[]>([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -52,11 +55,46 @@ const Product = () => {
       if (data.sizes && data.sizes.length > 0) {
         setSelectedSize(data.sizes[0]);
       }
+      setSelectedImageIndex(0);
       setLoading(false);
+
+      // Fetch similar products
+      const { data: similar } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category', data.category)
+        .eq('is_active', true)
+        .neq('id', data.id)
+        .limit(4);
+
+      setSimilarProducts(similar || []);
     };
 
     fetchProduct();
   }, [id, navigate]);
+
+  const getProductImages = (): string[] => {
+    if (!product) return [];
+    
+    const images: string[] = [];
+    
+    // Add images from images array
+    if (product.images && product.images.length > 0) {
+      images.push(...product.images);
+    }
+    
+    // Add image_url if exists and not already in images
+    if (product.image_url && !images.includes(product.image_url)) {
+      images.unshift(product.image_url);
+    }
+    
+    // Fallback to placeholder if no images
+    if (images.length === 0) {
+      images.push('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop');
+    }
+    
+    return images.slice(0, 5); // Max 5 images
+  };
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -71,6 +109,7 @@ const Product = () => {
       return;
     }
 
+    const images = getProductImages();
     for (let i = 0; i < quantity; i++) {
       addToCart({
         id: `${product.id}-${selectedSize}`,
@@ -78,12 +117,22 @@ const Product = () => {
         price: Number(product.price),
         description: product.description || '',
         category: product.category,
-        image: product.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop',
+        image: images[0],
         size: selectedSize
       });
     }
 
     toast.success('Added to cart!');
+  };
+
+  const handlePrevImage = () => {
+    const images = getProductImages();
+    setSelectedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = () => {
+    const images = getProductImages();
+    setSelectedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
   if (loading) {
@@ -107,6 +156,8 @@ const Product = () => {
     return null;
   }
 
+  const images = getProductImages();
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -124,13 +175,63 @@ const Product = () => {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-            {/* Product Image */}
-            <div className="aspect-[3/4] bg-card rounded-2xl overflow-hidden">
-              <img
-                src={product.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
+            {/* Product Images */}
+            <div className="space-y-4">
+              {/* Main Image */}
+              <div className="relative aspect-[3/4] bg-card rounded-2xl overflow-hidden group">
+                <img
+                  src={images[selectedImageIndex]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePrevImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+                
+                {/* Image counter */}
+                {images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                    {selectedImageIndex + 1} / {images.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Gallery */}
+              {images.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      className={`flex-shrink-0 w-20 h-24 rounded-lg overflow-hidden border-2 transition-colors ${
+                        selectedImageIndex === index
+                          ? 'border-accent'
+                          : 'border-transparent hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} view ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
@@ -147,9 +248,12 @@ const Product = () => {
                 </p>
 
                 {product.description && (
-                  <p className="text-muted-foreground leading-relaxed mb-8">
-                    {product.description}
-                  </p>
+                  <div className="mb-8">
+                    <h3 className="text-sm font-medium mb-3">Description</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {product.description}
+                    </p>
+                  </div>
                 )}
 
                 {/* Size Selection */}
@@ -216,6 +320,36 @@ const Product = () => {
               </Button>
             </div>
           </div>
+
+          {/* Similar Products */}
+          {similarProducts.length > 0 && (
+            <section className="mt-20">
+              <h2 className="font-heading text-2xl sm:text-3xl mb-8">You May Also Like</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {similarProducts.map((similarProduct) => (
+                  <Link
+                    key={similarProduct.id}
+                    to={`/product/${similarProduct.id}`}
+                    className="group"
+                  >
+                    <div className="aspect-[3/4] bg-card rounded-xl overflow-hidden mb-3">
+                      <img
+                        src={similarProduct.images?.[0] || similarProduct.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'}
+                        alt={similarProduct.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                    <h3 className="font-heading text-sm sm:text-base mb-1 group-hover:text-accent transition-colors">
+                      {similarProduct.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      ${Number(similarProduct.price).toFixed(2)}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
