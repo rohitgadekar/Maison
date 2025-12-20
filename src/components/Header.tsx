@@ -91,67 +91,71 @@ export function Header() {
 
           {/* User & Cart */}
           <div className="flex items-center gap-4">
-            {!user ? (
-              <Link
-                to="/auth"
+            {/* Desktop: User & Search */}
+            <div className="hidden lg:flex items-center gap-4">
+              {!user ? (
+                <Link
+                  to="/auth"
+                  className="p-2 transition-transform hover:scale-110 text-primary"
+                >
+                  <User className="w-5 h-5" />
+                </Link>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-2 outline-none group">
+                      <UserCircle className="w-5 h-5 transition-transform group-hover:scale-110 text-accent" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" sideOffset={8} className="w-64 rounded-3xl p-4 shadow-2xl border-accent/5 bg-white/95 backdrop-blur-xl">
+                    <DropdownMenuLabel className="font-heading text-xs uppercase tracking-[0.3em] font-black text-accent mb-2">Member Archive</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-accent/5" />
+                    <div className="py-2">
+                      {isAdmin ? (
+                        <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
+                          <Link to="/admin">
+                            <LayoutDashboard className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Admin Terminal</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : (
+                        <>
+                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
+                            <Link to="/account">
+                              <UserCircle className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Identity Settings</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
+                            <Link to="/orders">
+                              <ClipboardList className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Archival History</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator className="bg-accent/5 my-2" />
+                      <DropdownMenuItem onClick={handleLogout} className="rounded-xl px-4 py-3 focus:bg-rose-50 text-rose-500 cursor-pointer flex items-center mt-1 group">
+                        <LogOut className="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Depart Session</span>
+                      </DropdownMenuItem>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              <button
+                onClick={() => setIsSearchOpen(true)}
                 className="p-2 transition-transform hover:scale-110 text-primary"
               >
-                <User className="w-5 h-5" />
-              </Link>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-2 outline-none group">
-                    <UserCircle className="w-5 h-5 transition-transform group-hover:scale-110 text-accent" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 mt-4 rounded-3xl p-4 shadow-2xl border-accent/5 bg-white/95 backdrop-blur-xl">
-                  <DropdownMenuLabel className="font-heading text-xs uppercase tracking-[0.3em] font-black text-accent mb-2">Member Archive</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-accent/5" />
-                  <div className="py-2">
-                    {isAdmin ? (
-                      <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                        <Link to="/admin">
-                          <LayoutDashboard className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Admin Terminal</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    ) : (
-                      <>
-                        <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                          <Link to="/account">
-                            <UserCircle className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Identity Settings</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                          <Link to="/orders">
-                            <ClipboardList className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Archival History</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator className="bg-accent/5 my-2" />
-                    <DropdownMenuItem onClick={handleLogout} className="rounded-xl px-4 py-3 focus:bg-rose-50 text-rose-500 cursor-pointer flex items-center mt-1 group">
-                      <LogOut className="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Depart Session</span>
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
 
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="p-2 transition-transform hover:scale-110 text-primary"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-
+            {/* Always Visible: Wishlist & Cart */}
             <Link
               to="/wishlist"
-              className="relative p-2 group transition-transform hover:scale-110"
+              className="relative p-2 group transition-transform hover:scale-110 lg:block hidden"
             >
               <Heart className="w-5 h-5 text-primary" />
               {wishlistItems.length > 0 && (
@@ -177,58 +181,111 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="lg:hidden py-12 border-t border-accent/5 animate-fade-in bg-white/95 backdrop-blur-xl absolute left-0 right-0 top-full h-[calc(100vh-80px)] overflow-y-auto px-8">
-            <div className="flex flex-col gap-10 items-center justify-center h-full">
-              <Link
-                to="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-black uppercase tracking-[0.5em] text-primary/30 hover:text-accent transition-all italic"
-              >
-                Home
-              </Link>
-              <Link
-                to="/shop"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-black uppercase tracking-[0.5em] text-primary/30 hover:text-accent transition-all italic"
-              >
-                Archive
-              </Link>
-              <Link
-                to="/about"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-black uppercase tracking-[0.5em] text-primary/30 hover:text-accent transition-all italic"
-              >
-                Philosophy
-              </Link>
-              <Link
-                to="/contact"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-black uppercase tracking-[0.5em] text-primary/30 hover:text-accent transition-all italic"
-              >
-                Concierge
-              </Link>
+          <nav className="lg:hidden h-[calc(100vh-80px)] absolute left-0 right-0 top-full bg-[#FFFAF5] overflow-y-auto animate-in slide-in-from-top-5 duration-300 flex flex-col z-50">
 
-              <div className="w-12 h-0.5 bg-accent/10 my-4" />
+            {/* Mobile Search Trigger */}
+            <div className="px-8 pt-8 pb-4">
+              <button
+                onClick={() => { setIsSearchOpen(true); setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-accent/10 shadow-sm text-primary/40"
+              >
+                <Search className="w-5 h-5" />
+                <span className="text-xs font-black uppercase tracking-[0.2em]">Search Archives...</span>
+              </button>
+            </div>
 
-              {!user ? (
+            <div className="flex-1 px-8 py-4 flex flex-col gap-8">
+              <div className="flex flex-col gap-6">
                 <Link
-                  to="/auth"
+                  to="/"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-xs font-black uppercase tracking-[0.4em] bg-primary text-white px-8 py-4 rounded-full"
+                  className="text-3xl font-heading font-bold text-primary hover:text-accent transition-colors"
                 >
-                  Enter Archive
+                  Home
                 </Link>
-              ) : (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="text-xs font-black uppercase tracking-[0.4em] text-rose-500"
+                <Link
+                  to="/shop"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-3xl font-heading font-bold text-primary hover:text-accent transition-colors"
                 >
-                  Depart Session
-                </button>
-              )}
+                  Archive
+                </Link>
+                <Link
+                  to="/about"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-3xl font-heading font-bold text-primary hover:text-accent transition-colors"
+                >
+                  Philosophy
+                </Link>
+                <Link
+                  to="/contact"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-3xl font-heading font-bold text-primary hover:text-accent transition-colors"
+                >
+                  Concierge
+                </Link>
+                <Link
+                  to="/wishlist"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-3xl font-heading font-bold text-primary hover:text-accent transition-colors flex items-center gap-3"
+                >
+                  Wishlist
+                  {wishlistItems.length > 0 && <span className="text-accent text-sm align-top">({wishlistItems.length})</span>}
+                </Link>
+              </div>
+
+              <div className="mt-auto mb-12 space-y-6">
+                <div className="w-12 h-0.5 bg-accent/10" />
+
+                {!user ? (
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Member Access</p>
+                    <Link
+                      to="/auth"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center justify-between w-full bg-[#111] text-white p-5 rounded-[2rem] shadow-lg group"
+                    >
+                      <span className="text-xs font-black uppercase tracking-[0.3em]">Enter Archive</span>
+                      <User className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Welcome, {user.email?.split('@')[0]}</p>
+
+                    <Link
+                      to="/account"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-4 text-primary hover:text-accent transition-colors"
+                    >
+                      <UserCircle className="w-5 h-5" />
+                      <span className="text-sm font-bold uppercase tracking-widest">My Account</span>
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-4 text-primary hover:text-accent transition-colors"
+                      >
+                        <LayoutDashboard className="w-5 h-5" />
+                        <span className="text-sm font-bold uppercase tracking-widest">Admin Terminal</span>
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-4 text-rose-500 hover:text-rose-600 transition-colors pt-4"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span className="text-sm font-bold uppercase tracking-widest">Depart Session</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </nav>
         )}

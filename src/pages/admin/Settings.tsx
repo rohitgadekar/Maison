@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { PremiumToggle } from '@/components/PremiumToggle';
 import { UserPlus, Settings2, ShieldAlert, Check, Ticket, Trash2, Edit3, Plus, Globe } from 'lucide-react';
 import {
     Select,
@@ -239,17 +240,10 @@ const AdminSettings = () => {
                                 <p className="font-bold text-lg mb-1">Allow New Sign-ups</p>
                                 <p className="text-xs text-primary/50 italic font-medium">Toggle public account registration</p>
                             </div>
-                            <button
-                                onClick={handleToggleSignups}
-                                disabled={isSaving}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${allowSignups ? 'bg-primary' : 'bg-input'
-                                    }`}
-                            >
-                                <span
-                                    className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${allowSignups ? 'translate-x-5' : 'translate-x-0'
-                                        }`}
-                                />
-                            </button>
+                            <PremiumToggle
+                                checked={allowSignups}
+                                onCheckedChange={handleToggleSignups}
+                            />
                         </div>
 
                         {!allowSignups && (
@@ -287,21 +281,53 @@ const AdminSettings = () => {
                             value={storeCurrency}
                             onValueChange={(val: any) => setStoreCurrency(val)}
                         >
-                            <SelectTrigger className="h-16 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-bold text-lg">
-                                <SelectValue />
+                            <SelectTrigger className="h-24 bg-white border border-accent/10 rounded-[2rem] px-8 focus:ring-accent/20 focus:ring-4 transition-all duration-300 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] hover:shadow-xl hover:border-accent/30 hover:-translate-y-0.5 group overflow-hidden relative">
+                                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <div className="flex items-center gap-6 relative z-10 w-full">
+                                    <div className="w-12 h-12 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
+                                        <Globe className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex flex-col items-start text-left flex-1">
+                                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-accent/60 mb-1 group-hover:text-accent transition-colors">Selected Standard</span>
+                                        <SelectValue placeholder="Select Currency" />
+                                    </div>
+                                </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-none shadow-xl max-h-[300px]">
-                                {SUPPORTED_CURRENCIES.map((currency) => (
-                                    <SelectItem key={currency.code} value={currency.code} className="py-3 px-4 focus:bg-accent/5 cursor-pointer font-medium">
-                                        <span className="font-black w-8 inline-block">{currency.symbol}</span>
-                                        {currency.label} ({currency.code})
-                                    </SelectItem>
-                                ))}
+                            <SelectContent className="rounded-[2.5rem] border-accent/10 bg-white/95 backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] p-4 min-w-[360px] animate-in fade-in zoom-in-95 duration-300">
+                                <div className="px-6 py-4 border-b border-accent/10 mb-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/50 italic">Global Markets</p>
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar space-y-2 p-2">
+                                    {SUPPORTED_CURRENCIES.map((currency) => (
+                                        <SelectItem
+                                            key={currency.code}
+                                            value={currency.code}
+                                            className="group/item relative py-4 px-6 rounded-[1.5rem] cursor-pointer outline-none transition-all duration-300 border border-transparent focus:bg-accent focus:text-white hover:bg-accent hover:text-white data-[state=checked]:bg-accent/5 data-[state=checked]:border-accent/20"
+                                        >
+                                            <div className="flex items-center gap-5 relative z-10">
+                                                <span className="font-black text-2xl w-10 text-center opacity-40 group-hover/item:opacity-100 group-focus/item:opacity-100 group-data-[state=checked]/item:text-accent group-data-[state=checked]/item:opacity-100 transition-opacity text-primary group-hover/item:text-white group-focus/item:text-white">
+                                                    {currency.symbol}
+                                                </span>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="font-bold text-base leading-none mb-1.5 text-primary group-hover/item:text-white group-focus/item:text-white group-data-[state=checked]/item:text-primary">
+                                                        {currency.label}
+                                                    </span>
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40 group-hover/item:text-white group-focus/item:text-white group-hover/item:opacity-80 group-data-[state=checked]/item:text-accent">
+                                                        {currency.code}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </div>
                             </SelectContent>
                         </Select>
-                        <p className="text-xs text-primary/40 italic mt-4 leading-relaxed">
-                            This defines the base currency for all archival valuations. User conversions will be calculated relative to this standard.
-                        </p>
+                        <div className="mt-8 flex items-start gap-4 p-6 rounded-[2rem] bg-accent/[0.02] border border-accent/5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-accent mt-2 shrink-0 animate-pulse" />
+                            <p className="text-xs text-primary/50 font-medium leading-relaxed">
+                                <span className="text-accent font-bold">Note:</span> This setting establishes the foundational valuation for your archival collection. All global conversions will be calculated relative to this standard.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

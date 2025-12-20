@@ -32,6 +32,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { PremiumCheckbox } from "@/components/PremiumCheckbox";
+import { PremiumToggle } from "@/components/PremiumToggle";
+import { PremiumAlert } from "@/components/PremiumAlert";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 
@@ -74,6 +77,7 @@ const Account = () => {
         phone: "",
         is_default: false
     });
+    const [deleteAlert, setDeleteAlert] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
     useEffect(() => {
         if (user) {
@@ -158,18 +162,24 @@ const Account = () => {
         }
     };
 
-    const handleDeleteAddress = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this address?")) return;
+    const handleDeleteAddress = (id: string) => {
+        setDeleteAlert({ open: true, id });
+    };
+
+    const confirmDeleteAddress = async () => {
+        if (!deleteAlert.id) return;
         try {
             const { error } = await supabase
                 .from("saved_addresses")
                 .delete()
-                .eq("id", id);
+                .eq("id", deleteAlert.id);
             if (error) throw error;
             toast.success("Address deleted");
             fetchAddresses();
         } catch (error: any) {
             toast.error(error.message);
+        } finally {
+            setDeleteAlert({ open: false, id: null });
         }
     };
 
@@ -267,64 +277,68 @@ const Account = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-                        {/* Sidebar / Profile Info */}
-                        <div className="space-y-12">
-                            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-accent/5">
-                                <div className="flex items-center gap-6 mb-10">
-                                    <div className="w-20 h-20 rounded-full flex items-center justify-center text-accent">
-                                        <UserCircle className="w-12 h-12" />
+                    <div className="space-y-16">
+                        {/* Top Tier: Identity & Settings Grid (Bento Style) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {/* Card 1: Profile Management */}
+                            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-accent/5 h-full flex flex-col justify-between">
+                                <div className="space-y-10">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-20 h-20 rounded-full flex items-center justify-center text-accent bg-accent/5">
+                                            <UserCircle className="w-12 h-12" />
+                                        </div>
+                                        <div>
+                                            <h2 className="font-heading text-2xl font-bold tracking-tight line-clamp-1">{profile.full_name || "Maison Member"}</h2>
+                                            <p className="text-muted-foreground italic text-sm">{user?.email}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="font-heading text-2xl font-bold tracking-tight">{profile.full_name || "Maison Member"}</h2>
-                                        <p className="text-muted-foreground italic">{user?.email}</p>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-6">
-                                    {isEditingProfile ? (
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-widest text-accent">Full Name</Label>
-                                                <Input
-                                                    value={profile.full_name || ""}
-                                                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                                    className="h-12 bg-accent/5 border-none rounded-xl"
-                                                />
+                                    <div className="space-y-6">
+                                        {isEditingProfile ? (
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-accent">Full Name</Label>
+                                                    <Input
+                                                        value={profile.full_name || ""}
+                                                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                                        className="h-12 bg-accent/5 border-none rounded-xl"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-accent">Phone</Label>
+                                                    <Input
+                                                        value={profile.phone || ""}
+                                                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                                        className="h-12 bg-accent/5 border-none rounded-xl"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-2 pt-4">
+                                                    <Button onClick={handleUpdateProfile} className="flex-1 rounded-full bg-primary text-white font-bold h-10">Save</Button>
+                                                    <Button onClick={() => setIsEditingProfile(false)} variant="ghost" className="rounded-full h-10">Cancel</Button>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-widest text-accent">Phone</Label>
-                                                <Input
-                                                    value={profile.phone || ""}
-                                                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                                                    className="h-12 bg-accent/5 border-none rounded-xl"
-                                                />
+                                        ) : (
+                                            <div className="space-y-6">
+                                                <div className="flex items-center gap-4 text-primary/70">
+                                                    <Mail className="w-5 h-5 text-accent" />
+                                                    <span className="font-medium italic text-sm">{user?.email}</span>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-primary/70">
+                                                    <PhoneIcon className="w-5 h-5 text-accent" />
+                                                    <span className="font-medium italic text-sm">{profile.phone || "No phone added"}</span>
+                                                </div>
+                                                <Button onClick={() => setIsEditingProfile(true)} variant="outline" className="w-full rounded-xl border-accent/10 hover:bg-white hover:border-accent hover:text-accent font-black uppercase text-[10px] tracking-widest h-12">
+                                                    Edit Profile
+                                                </Button>
                                             </div>
-                                            <div className="flex gap-2 pt-4">
-                                                <Button onClick={handleUpdateProfile} className="flex-1 rounded-full bg-primary text-white font-bold h-10">Save</Button>
-                                                <Button onClick={() => setIsEditingProfile(false)} variant="ghost" className="rounded-full h-10">Cancel</Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            <div className="flex items-center gap-4 text-primary/70">
-                                                <Mail className="w-5 h-5 text-accent" />
-                                                <span className="font-medium italic">{user?.email}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-primary/70">
-                                                <PhoneIcon className="w-5 h-5 text-accent" />
-                                                <span className="font-medium italic">{profile.phone || "No phone added"}</span>
-                                            </div>
-                                            <Button onClick={() => setIsEditingProfile(true)} variant="outline" className="w-full rounded-xl border-accent/10 hover:bg-white hover:border-accent hover:text-accent font-black uppercase text-[10px] tracking-widest h-12">
-                                                Edit Profile
-                                            </Button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="relative group perspective-1000">
-                                <div className="bg-[#0A0A0A] text-white p-10 rounded-[3rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden transition-all duration-700 hover:rotate-y-12 hover:scale-[1.02] border border-white/5 preserve-3d">
+                            {/* Card 2: Archive Identity (Holographic) */}
+                            <div className="relative group perspective-1000 h-full">
+                                <div className="bg-[#0A0A0A] text-white p-10 rounded-[3rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden transition-all duration-700 hover:rotate-y-12 hover:scale-[1.02] border border-white/5 preserve-3d h-full flex flex-col justify-between">
                                     {/* Holographic Accents */}
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full -mr-32 -mt-32 blur-[80px] opacity-50 pulse-glow" />
                                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-[60px]" />
@@ -366,73 +380,100 @@ const Account = () => {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-accent">Authenticated Member</span>
-                                            </div>
-                                            <div className="text-[10px] font-black italic tracking-tighter opacity-20 group-hover:opacity-100 transition-opacity">
-                                                MAISON <span className="text-accent">ATELIER</span>
-                                            </div>
+                                    <div className="pt-8 mt-auto border-t border-white/5 flex items-center justify-between relative z-10">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-accent">Authenticated Member</span>
+                                        </div>
+                                        <div className="text-[10px] font-black italic tracking-tighter opacity-20 group-hover:opacity-100 transition-opacity">
+                                            MAISON <span className="text-accent">ATELIER</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            {/* Monetary Preferences */}
-                            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-accent/5">
-                                <div className="flex items-center gap-6 mb-8">
-                                    <div className="w-16 h-16 bg-accent/5 rounded-[2rem] flex items-center justify-center text-accent">
-                                        <Globe className="w-8 h-8" />
+
+                            {/* Card 3: Monetary Preferences */}
+                            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-accent/5 h-full flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center gap-6 mb-8">
+                                        <div className="w-16 h-16 bg-accent/5 rounded-[2rem] flex items-center justify-center text-accent">
+                                            <Globe className="w-8 h-8" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-heading text-xl font-bold tracking-tight">Monetary Preferences</h3>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">Currency & Conversion</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="font-heading text-xl font-bold tracking-tight">Monetary Preferences</h3>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">Currency & Conversion</p>
+
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Preferred Currency</Label>
+                                            <Select value={userCurrency} onValueChange={(val: any) => setUserCurrency(val)}>
+                                                <SelectTrigger className="h-20 bg-white border border-accent/10 rounded-[2rem] px-6 focus:ring-accent/20 focus:ring-4 transition-all duration-300 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] hover:shadow-xl hover:border-accent/30 hover:-translate-y-0.5 group overflow-hidden relative">
+                                                    <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                                    <div className="flex items-center gap-4 relative z-10 w-full">
+                                                        <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
+                                                            <Globe className="w-5 h-5" />
+                                                        </div>
+                                                        <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-accent/60 mb-0.5 group-hover:text-accent transition-colors truncate w-full">Personal Standard</span>
+                                                            <SelectValue />
+                                                        </div>
+                                                    </div>
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-[2rem] border-accent/10 bg-white/95 backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] p-2 min-w-[320px] animate-in fade-in zoom-in-95 duration-300">
+                                                    <div className="px-6 py-3 border-b border-accent/10 mb-2">
+                                                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/50 italic">Global Markets</p>
+                                                    </div>
+                                                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar space-y-1">
+                                                        {SUPPORTED_CURRENCIES.map((c) => (
+                                                            <SelectItem
+                                                                key={c.code}
+                                                                value={c.code}
+                                                                className="group/item relative py-3 px-4 rounded-2xl cursor-pointer outline-none transition-all duration-300 border border-transparent focus:bg-accent focus:text-white hover:bg-accent hover:text-white data-[state=checked]:bg-accent/5 data-[state=checked]:border-accent/20"
+                                                            >
+                                                                <div className="flex items-center gap-4 relative z-10">
+                                                                    <span className="font-black text-xl w-8 text-center opacity-40 group-hover/item:opacity-100 group-focus/item:opacity-100 group-data-[state=checked]/item:text-accent group-data-[state=checked]/item:opacity-100 transition-opacity text-primary group-hover/item:text-white group-focus/item:text-white">
+                                                                        {c.symbol}
+                                                                    </span>
+                                                                    <div className="flex flex-col items-start">
+                                                                        <span className="font-bold text-sm leading-none mb-1 text-primary group-hover/item:text-white group-focus/item:text-white group-data-[state=checked]/item:text-primary">
+                                                                            {c.label}
+                                                                        </span>
+                                                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40 group-hover/item:text-white group-focus/item:text-white group-hover/item:opacity-80 group-data-[state=checked]/item:text-accent">
+                                                                            {c.code}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </div>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Preferred Currency</Label>
-                                        <Select value={userCurrency} onValueChange={(val: any) => setUserCurrency(val)}>
-                                            <SelectTrigger className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-bold">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-2xl border-none shadow-xl max-h-[300px]">
-                                                {SUPPORTED_CURRENCIES.map((c) => (
-                                                    <SelectItem key={c.code} value={c.code} className="font-medium cursor-pointer">
-                                                        <span className="font-black w-8 inline-block">{c.symbol}</span> {c.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-4 bg-accent/5 rounded-2xl border border-accent/5">
-                                        <div className="flex items-center gap-3">
-                                            <RefreshCw className="w-5 h-5 text-accent" />
-                                            <div>
-                                                <p className="text-sm font-bold">Live Conversion</p>
-                                                <p className="text-[10px] text-primary/50 italic font-medium">Auto-convert prices on hover</p>
-                                            </div>
+                                <div className="flex items-center justify-between p-4 bg-accent/5 rounded-2xl border border-accent/5 mt-8">
+                                    <div className="flex items-center gap-3">
+                                        <RefreshCw className="w-5 h-5 text-accent" />
+                                        <div>
+                                            <p className="text-sm font-bold">Live Conversion</p>
+                                            <p className="text-[10px] text-primary/50 italic font-medium">Auto-convert prices on hover</p>
                                         </div>
-                                        <button
-                                            onClick={() => setLiveConversion(!liveConversionEnabled)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${liveConversionEnabled ? 'bg-primary' : 'bg-input'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${liveConversionEnabled ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                            />
-                                        </button>
                                     </div>
+                                    <PremiumToggle
+                                        checked={liveConversionEnabled}
+                                        onCheckedChange={() => setLiveConversion(!liveConversionEnabled)}
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Main Content / Addresses */}
-                        <div className="lg:col-span-2 space-y-12">
+                        {/* Bottom Tier: Addresses Section */}
+                        <div className="space-y-12">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-heading text-3xl font-bold tracking-tight">Saved <span className="text-accent italic">Addresses</span></h3>
                                 <Button
@@ -444,7 +485,7 @@ const Account = () => {
                             </div>
 
                             {isAddingAddress && (
-                                <div className="bg-white p-10 sm:p-12 rounded-[4rem] shadow-2xl border border-accent/5 animate-fade-in">
+                                <div className="bg-white p-10 sm:p-12 rounded-[4rem] shadow-2xl border border-accent/5 animate-fade-in max-w-4xl mx-auto">
                                     <div className="flex justify-between items-center mb-10">
                                         <h4 className="font-heading text-2xl font-bold tracking-tight">{editingAddressId ? "Edit Archive Location" : "New Archive Location"}</h4>
                                         <Button variant="ghost" size="icon" onClick={() => setIsAddingAddress(false)} className="rounded-full">
@@ -521,14 +562,12 @@ const Account = () => {
                                         </div>
 
                                         <div className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
+                                            <PremiumCheckbox
                                                 id="is_default"
-                                                className="w-5 h-5 rounded-md border-accent text-accent focus:ring-accent"
                                                 checked={addressForm.is_default}
-                                                onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
+                                                onChange={(checked) => setAddressForm({ ...addressForm, is_default: checked })}
+                                                label="Set as default artifact location"
                                             />
-                                            <label htmlFor="is_default" className="text-sm font-medium italic text-primary/70">Set as default artifact location</label>
                                         </div>
 
                                         <div className="flex gap-4 pt-4">
@@ -543,7 +582,7 @@ const Account = () => {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {addresses.length > 0 ? (
                                     addresses.map((addr) => (
                                         <div key={addr.id} className="bg-white p-10 rounded-[3rem] shadow-sm border border-accent/5 relative group hover:shadow-2xl transition-all duration-700">
@@ -558,10 +597,10 @@ const Account = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <Button variant="ghost" size="icon" onClick={() => startEditingAddress(addr)} className="w-10 h-10 rounded-full hover:bg-accent/10 text-accent">
+                                                    <Button variant="ghost" size="icon" onClick={() => startEditingAddress(addr)} className="w-10 h-10 rounded-full hover:bg-accent/10 text-accent hover:text-accent">
                                                         <Edit2 className="w-4 h-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAddress(addr.id)} className="w-10 h-10 rounded-full hover:bg-rose-50 text-rose-500">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAddress(addr.id)} className="w-10 h-10 rounded-full hover:bg-rose-50 text-rose-500 hover:text-rose-500">
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
@@ -590,7 +629,7 @@ const Account = () => {
                                     ))
                                 ) : (
                                     !isAddingAddress && (
-                                        <div className="col-span-1 md:col-span-2 text-center py-20 bg-white/50 rounded-[3rem] border border-dashed border-accent/20">
+                                        <div className="col-span-full py-20 bg-white/50 rounded-[3rem] border border-dashed border-accent/20 text-center">
                                             <MapPin className="w-12 h-12 text-accent/20 mx-auto mb-6" />
                                             <p className="font-heading text-xl italic text-muted-foreground">No archival locations saved yet.</p>
                                         </div>
@@ -599,6 +638,15 @@ const Account = () => {
                             </div>
                         </div>
                     </div>
+
+                    <PremiumAlert
+                        open={deleteAlert.open}
+                        onOpenChange={(open) => setDeleteAlert({ ...deleteAlert, open })}
+                        title="Delete Location"
+                        description="Are you sure you want to remove this address from your archive? This artifact cannot be recovered once purged."
+                        onConfirm={confirmDeleteAddress}
+                        confirmText="Purge Address"
+                    />
                 </div>
             </main>
 

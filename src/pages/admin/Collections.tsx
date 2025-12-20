@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PremiumCheckbox } from '@/components/PremiumCheckbox';
 import { toast } from 'sonner';
 import {
     Plus,
@@ -298,14 +299,12 @@ export default function AdminCollections() {
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <input
-                                    type="checkbox"
+                                <PremiumCheckbox
                                     id="is_active"
                                     checked={formData.is_active}
-                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                    className="w-5 h-5 accent-accent"
+                                    onChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                                    label="ACTIVE IN SHOWROOM"
                                 />
-                                <Label htmlFor="is_active" className="text-[10px] font-black uppercase tracking-[0.2em]">Active in Showroom</Label>
                             </div>
 
                             <Button
