@@ -43,6 +43,8 @@ const AdminProducts = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [cloneSearch, setCloneSearch] = useState('');
   const [isCloneVisible, setIsCloneVisible] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productToDeleteId, setProductToDeleteId] = useState<string | null>(null);
 
   // NEW STATE FOR OVERVIEW DIALOG
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
@@ -192,18 +194,28 @@ const AdminProducts = () => {
     fetchProducts();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you certain you wish to remove this artifact from the archive?')) return;
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setProductToDeleteId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDeleteId) return;
+
     const { error } = await supabase
       .from('products')
       .delete()
-      .eq('id', id);
+      .eq('id', productToDeleteId);
+
     if (error) {
       toast.error('Failed to remove artifact');
       return;
     }
     toast.success('Artifact removed from archive');
     fetchProducts();
+    setIsDeleteDialogOpen(false);
+    setProductToDeleteId(null);
   };
 
   const handleToggleActive = async (product: Product) => {
@@ -346,7 +358,7 @@ const AdminProducts = () => {
                   variant="outline"
                   size="icon"
                   className="w-12 h-12 rounded-2xl border-accent/10 text-primary/30 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(e, product.id); }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -736,6 +748,41 @@ const AdminProducts = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Premium Dissolution Confirmation */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
+          <div className="p-10 text-center">
+            <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
+              <Trash2 className="w-10 h-10" />
+            </div>
+
+            <span className="text-rose-500 text-[10px] font-black uppercase tracking-[0.4em] mb-4 block italic">Artifact Dissolution</span>
+            <h2 className="text-3xl font-bold tracking-tighter mb-4 leading-tight">
+              Confirm <span className="italic font-light text-rose-500">Purge?</span>
+            </h2>
+            <p className="text-muted-foreground italic text-sm leading-relaxed mb-10 px-4">
+              You are about to dissolve this artifact from the master catalog. This action is irreversible and will remove all associated archival data.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="h-14 rounded-2xl border-accent/10 text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all"
+              >
+                Abort
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                className="h-14 rounded-2xl bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200"
+              >
+                Dissolve Artifact
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

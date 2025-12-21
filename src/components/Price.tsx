@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useCurrency } from '@/context/CurrencyContext';
 import { cn } from '@/lib/utils';
 import {
@@ -59,26 +60,45 @@ export const Price = ({ amount, className, currencyCode }: PriceProps) => {
         convertedPrice = formatPrice(convertedAmount, userCurrency);
     }
 
+    const [open, setOpen] = useState(false);
+
     if (!convertedPrice) {
         return <span className={cn(className)}>{displayedPrice}</span>;
     }
 
     return (
-        <Tooltip delayDuration={0}>
+        <Tooltip open={open} onOpenChange={setOpen} delayDuration={0}>
             <TooltipTrigger asChild>
-                <span className={cn("cursor-help decoration-accent/30 decoration-dashed underline-offset-4 hover:text-accent transition-colors", className)}>
+                <span
+                    tabIndex={0}
+                    onClick={(e) => {
+                        // On mobile, toggle the tooltip. On desktop, hover still works.
+                        if (window.matchMedia("(max-width: 1024px)").matches) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpen(!open);
+                        }
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setOpen(!open);
+                        }
+                    }}
+                    className={cn("cursor-help decoration-accent/30 decoration-dashed underline underline-offset-4 hover:text-accent transition-colors outline-none", className)}
+                >
                     {displayedPrice}
                 </span>
             </TooltipTrigger>
             <TooltipContent
                 side="top"
-                className="bg-white/90 backdrop-blur-xl border border-accent/10 shadow-xl p-4 rounded-[1rem] animate-in fade-in zoom-in-95 duration-200"
+                className="bg-white/95 backdrop-blur-xl border border-accent/10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.2)] p-4 rounded-[1.25rem] animate-in fade-in zoom-in-95 duration-200 z-[100]"
             >
-                <div className="flex flex-col items-center gap-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent/60">
-                        Approx. {userCurrency}
+                <div className="flex flex-col items-center gap-1 min-w-[120px]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent/60 italic">
+                        Valuation: {userCurrency}
                     </p>
-                    <p className="text-xl font-bold tracking-tight text-primary">
+                    <p className="text-2xl font-black tracking-tighter text-primary">
                         {convertedPrice}
                     </p>
                 </div>

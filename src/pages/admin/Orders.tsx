@@ -28,6 +28,7 @@ import {
 import { PremiumLoader } from '@/components/PremiumLoader';
 import { calculateOrderTotals } from '@/lib/calculations';
 import { Invoice } from '@/components/Invoice';
+import { cn } from '@/lib/utils';
 
 interface Order {
   id: string;
@@ -149,8 +150,8 @@ const AdminOrders = () => {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    // If changing to shipped, require tracking number
-    if (newStatus === 'shipped') {
+    // If changing to shipped or delivered, require tracking number
+    if (newStatus === 'shipped' || newStatus === 'delivered') {
       const order = orders.find(o => o.id === orderId);
       if (!order?.tracking_number) {
         setPendingStatusChange({ orderId, status: newStatus });
@@ -214,17 +215,17 @@ const AdminOrders = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-amber-50 text-amber-600 border-amber-100';
+        return 'bg-amber-500/10 text-amber-600 shadow-[0_4px_12px_-2px_rgba(245,158,11,0.15)]';
       case 'processing':
-        return 'bg-blue-50 text-blue-600 border-blue-100';
+        return 'bg-blue-500/10 text-blue-600 shadow-[0_4px_12px_-2px_rgba(59,130,246,0.15)]';
       case 'shipped':
-        return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+        return 'bg-indigo-500/10 text-indigo-600 shadow-[0_4px_12px_-2px_rgba(99,102,241,0.15)]';
       case 'delivered':
-        return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+        return 'bg-emerald-500/10 text-emerald-600 shadow-[0_4px_12px_-2px_rgba(16,185,129,0.15)]';
       case 'cancelled':
-        return 'bg-rose-50 text-rose-600 border-rose-100';
+        return 'bg-rose-500/10 text-rose-600 shadow-[0_4px_12px_-2px_rgba(244,63,94,0.15)]';
       default:
-        return 'bg-gray-50 text-gray-600 border-gray-100';
+        return 'bg-gray-500/10 text-gray-600 shadow-[0_4px_12px_-2px_rgba(107,114,128,0.15)]';
     }
   };
 
@@ -299,19 +300,20 @@ const AdminOrders = () => {
                           value={order.status}
                           onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
                         >
-                          <SelectTrigger className="w-[160px] h-11 rounded-xl border-accent/5 bg-accent/5 font-black uppercase tracking-widest text-[8px] focus:ring-accent">
-                            <SelectValue>
-                              <span className={`px-3 py-1.5 rounded-lg  ${getStatusColor(order.status)}`}>
-                                {order.status}
-                              </span>
-                            </SelectValue>
+                          <SelectTrigger
+                            className={cn(
+                              "w-[180px] h-12 rounded-2xl border-none px-5 font-black uppercase tracking-[.2em] text-[9px] transition-all duration-500 focus:ring-0 ring-0 focus:ring-accent/20",
+                              getStatusColor(order.status)
+                            )}
+                          >
+                            <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-accent/5 bg-white shadow-2xl">
-                            <SelectItem value="pending" className="text-[10px] font-black uppercase tracking-widest">Pending</SelectItem>
-                            <SelectItem value="processing" className="text-[10px] font-black uppercase tracking-widest">Processing</SelectItem>
-                            <SelectItem value="shipped" className="text-[10px] font-black uppercase tracking-widest">Shipped</SelectItem>
-                            <SelectItem value="delivered" className="text-[10px] font-black uppercase tracking-widest">Delivered</SelectItem>
-                            <SelectItem value="cancelled" className="text-[10px] font-black uppercase tracking-widest text-rose-500">Cancelled</SelectItem>
+                          <SelectContent className="rounded-[2rem] border-accent/10 bg-white/95 backdrop-blur-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] p-2 min-w-[200px]">
+                            <SelectItem value="pending" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-600 transition-colors">Pending Access</SelectItem>
+                            <SelectItem value="processing" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 focus:bg-blue-50 focus:text-blue-600 transition-colors">Processing Ritual</SelectItem>
+                            <SelectItem value="shipped" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 focus:bg-indigo-50 focus:text-indigo-600 transition-colors">Shipped Archive</SelectItem>
+                            <SelectItem value="delivered" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 focus:bg-emerald-50 focus:text-emerald-600 transition-colors">Delivered Vault</SelectItem>
+                            <SelectItem value="cancelled" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 focus:text-rose-600 focus:bg-rose-50 transition-colors">Dissolved Entry</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
@@ -540,7 +542,7 @@ const AdminOrders = () => {
 
               <div className="space-y-8">
                 <p className="text-sm font-medium italic text-primary/50 leading-relaxed">
-                  Injected a unique logistics reference is mandatory to evolve this acquisition to the "Shipped" state.
+                  Injecting a unique logistics reference is mandatory to evolve this acquisition to a terminal status (Shipped or Delivered).
                 </p>
 
                 <div className="space-y-3">

@@ -6,6 +6,10 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Truck, Plus, Trash2, ShieldCheck, Globe, Edit2 } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
 
 interface ShippingProvider {
     id: string;
@@ -25,6 +29,8 @@ const AdminShipping = () => {
         base_fee: '',
         delivery_estimate: ''
     });
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [providerToDeleteId, setProviderToDeleteId] = useState<string | null>(null);
 
     const fetchProviders = async () => {
         setLoading(true);
@@ -76,11 +82,19 @@ const AdminShipping = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setProviderToDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!providerToDeleteId) return;
+
         const { error } = await supabase
             .from('shipping_providers' as any)
             .delete()
-            .eq('id', id);
+            .eq('id', providerToDeleteId);
 
         if (error) {
             toast.error('Failed to remove provider');
@@ -88,6 +102,8 @@ const AdminShipping = () => {
             toast.success('Provider removed from registry');
             fetchProviders();
         }
+        setIsDeleteDialogOpen(false);
+        setProviderToDeleteId(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -174,8 +190,8 @@ const AdminShipping = () => {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleDelete(provider.id)}
-                                    className="rounded-full hover:bg-rose-50 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => handleDeleteClick(provider.id, e)}
+                                    className="rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-500  group-hover:opacity-100 transition-opacity"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -263,6 +279,41 @@ const AdminShipping = () => {
                     </div>
                 </div>
             )}
+
+            {/* Premium Dissolution Confirmation */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
+                    <div className="p-10 text-center">
+                        <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
+                            <Trash2 className="w-10 h-10" />
+                        </div>
+
+                        <span className="text-rose-500 text-[10px] font-black uppercase tracking-[0.4em] mb-4 block italic">Logistics Dissolution</span>
+                        <h2 className="text-3xl font-bold tracking-tighter mb-4 leading-tight">
+                            Confirm <span className="italic font-light text-rose-500">Purge?</span>
+                        </h2>
+                        <p className="text-muted-foreground italic text-sm leading-relaxed mb-10 px-4">
+                            You are about to dissolve this logistics provider from the master registry. This action is irreversible and will remove all associated service data.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDeleteDialogOpen(false)}
+                                className="h-14 rounded-2xl border-accent/10 text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all"
+                            >
+                                Abort
+                            </Button>
+                            <Button
+                                onClick={confirmDelete}
+                                className="h-14 rounded-2xl bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200"
+                            >
+                                Dissolve Provider
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

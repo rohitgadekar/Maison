@@ -51,8 +51,11 @@ export default function AdminCollections() {
     const [isEditing, setIsEditing] = useState(false);
     const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
     const [viewingCollection, setViewingCollection] = useState<Collection | null>(null);
+    const [isOverviewLoading, setIsOverviewLoading] = useState(false);
     const [overviewProducts, setOverviewProducts] = useState<Product[]>([]);
     const [collectionProducts, setCollectionProducts] = useState<string[]>([]); // product IDs
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [collectionToDeleteId, setCollectionToDeleteId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -118,6 +121,8 @@ export default function AdminCollections() {
     };
 
     const handleViewOverview = async (collection: Collection) => {
+        setOverviewProducts([]); // Clear previous artifacts to prevent registry lag
+        setIsOverviewLoading(true);
         setViewingCollection(collection);
         const { data, error } = await supabase
             .from('collection_products')
@@ -134,6 +139,7 @@ export default function AdminCollections() {
                 category: item.products.category
             })));
         }
+        setIsOverviewLoading(false);
     };
 
     const resetForm = () => {
@@ -197,20 +203,27 @@ export default function AdminCollections() {
         }
     };
 
-    const deleteCollection = async (e: React.MouseEvent, id: string) => {
+    const handleDeleteClick = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
-        if (!confirm('Are you sure you want to delete this collection?')) return;
+        setCollectionToDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!collectionToDeleteId) return;
 
         const { error } = await supabase
             .from('collections')
             .delete()
-            .eq('id', id);
+            .eq('id', collectionToDeleteId);
 
-        if (error) toast.error('Error deleting collection');
+        if (error) toast.error('Error dissolving collection');
         else {
-            toast.success('Collection deleted');
+            toast.success('Collection dissolved from registry');
             fetchCollections();
         }
+        setIsDeleteDialogOpen(false);
+        setCollectionToDeleteId(null);
     };
 
     const toggleProduct = (productId: string) => {
@@ -341,25 +354,25 @@ export default function AdminCollections() {
                                     key={product.id}
                                     onClick={() => toggleProduct(product.id)}
                                     className={cn(
-                                        "flex items-center p-4 rounded-2xl border cursor-pointer transition-all hover:border-accent group",
+                                        "flex items-center p-4 rounded-3xl border cursor-pointer transition-all hover:border-accent group",
                                         collectionProducts.includes(product.id)
-                                            ? "bg-black border-black shadow-xl"
+                                            ? "bg-accent/5 border-accent shadow-xl"
                                             : "bg-white border-accent/10"
                                     )}
                                 >
                                     <div className="w-14 h-14 rounded-xl overflow-hidden mr-4 bg-accent/5">
-                                        <img src={product.image} alt="" className="w-full h-full object-cover" />
+                                        <img src={product.image} alt="" className="w-full h-full object-cover mix-blend-multiply" />
                                     </div>
                                     <div className="flex-1">
                                         <h4 className={cn(
                                             "font-bold tracking-tight text-sm",
-                                            collectionProducts.includes(product.id) ? "text-white" : "text-primary"
+                                            collectionProducts.includes(product.id) ? "text-accent" : "text-primary"
                                         )}>
                                             {product.name}
                                         </h4>
                                         <p className={cn(
                                             "text-[10px] font-black uppercase tracking-widest italic opacity-40",
-                                            collectionProducts.includes(product.id) ? "text-white/60" : "text-primary/40"
+                                            collectionProducts.includes(product.id) ? "text-accent" : "text-primary"
                                         )}>
                                             {product.category}
                                         </p>
@@ -425,7 +438,7 @@ export default function AdminCollections() {
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={(e) => deleteCollection(e, collection.id)}
+                                        onClick={(e) => handleDeleteClick(e, collection.id)}
                                         className="w-10 h-10 rounded-full hover:bg-destructive/5 hover:text-destructive"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -454,7 +467,7 @@ export default function AdminCollections() {
             {/* Premium Overview Modal */}
             <Dialog open={!!viewingCollection} onOpenChange={() => setViewingCollection(null)}>
                 <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-[#FFFAF5]">
-                    <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
+                    <div className="flex flex-col lg:flex-row h-full max-h-[70vh]">
                         {/* Left: Info Section */}
                         <div className="lg:w-2/5 p-12 bg-white flex flex-col justify-between">
                             <div>
@@ -497,31 +510,77 @@ export default function AdminCollections() {
                         </div>
 
                         {/* Right: Product Grid */}
-                        <div className="lg:w-3/5 p-12 overflow-y-auto custom-scrollbar bg-accent/[0.02]">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/20 mb-8 italic">Registry Content /</h3>
-                            <div className="grid grid-cols-2 gap-6">
-                                {overviewProducts.map((product) => (
-                                    <div key={product.id} className="group relative">
-                                        <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-sm group-hover:shadow-xl transition-all duration-500">
-                                            <img
-                                                src={product.image}
-                                                alt={product.name}
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                                            />
-                                            <div className="absolute rounded-b-3xl inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <p className="text-white text-[10px] font-bold tracking-tight truncate">{product.name}</p>
-                                                <p className="text-white/60 text-[8px] font-black uppercase tracking-widest italic">{product.category}</p>
+                        <div className={cn(
+                            "lg:w-3/5 p-12 overflow-y-auto custom-scrollbar bg-accent/[0.02]",
+                            isOverviewLoading && "flex items-center justify-center min-h-[400px]"
+                        )}>
+                            {isOverviewLoading ? (
+                                <div className="scale-75 origin-center">
+                                    <PremiumLoader message="Fetching Archive Content..." />
+                                </div>
+                            ) : (
+                                <>
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/20 mb-8 italic">Registry Content /</h3>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {overviewProducts.map((product) => (
+                                            <div key={product.id} className="group relative">
+                                                <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-sm group-hover:shadow-xl transition-all duration-500">
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                                    />
+                                                    <div className="absolute rounded-b-3xl inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <p className="text-white text-[10px] font-bold tracking-tight truncate">{product.name}</p>
+                                                        <p className="text-white/60 text-[8px] font-black uppercase tracking-widest italic">{product.category}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
+                                        {overviewProducts.length === 0 && (
+                                            <div className="col-span-2 py-20 text-center opacity-30 italic">
+                                                <Package className="w-10 h-10 mx-auto mb-4" />
+                                                <p className="text-sm">Empty Registry</p>
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
-                                {overviewProducts.length === 0 && (
-                                    <div className="col-span-2 py-20 text-center opacity-30 italic">
-                                        <Package className="w-10 h-10 mx-auto mb-4" />
-                                        <p className="text-sm">Empty Registry</p>
-                                    </div>
-                                )}
-                            </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Premium Dissolution Confirmation */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
+                    <div className="p-10 text-center">
+                        <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
+                            <Trash2 className="w-10 h-10" />
+                        </div>
+
+                        <span className="text-rose-500 text-[10px] font-black uppercase tracking-[0.4em] mb-4 block italic">Archival Dissolution</span>
+                        <h2 className="text-3xl font-bold tracking-tighter mb-4 leading-tight">
+                            Confirm <span className="italic font-light text-rose-500">Purge?</span>
+                        </h2>
+                        <p className="text-muted-foreground italic text-sm leading-relaxed mb-10 px-4">
+                            You are about to dissolve this segmented registry. This action is irreversible and will remove the curation from the showroom.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDeleteDialogOpen(false)}
+                                className="h-14 rounded-2xl border-accent/10 text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all"
+                            >
+                                Abort
+                            </Button>
+                            <Button
+                                onClick={confirmDelete}
+                                className="h-14 rounded-2xl bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200"
+                            >
+                                Dissolve Registry
+                            </Button>
                         </div>
                     </div>
                 </DialogContent>

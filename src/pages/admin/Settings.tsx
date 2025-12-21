@@ -418,10 +418,10 @@ const AdminSettings = () => {
                                         {coupon.is_active ? 'Active Artifact' : 'Inactive'}
                                     </Badge>
                                     <div className="flex items-center gap-2">
-                                        <button onClick={() => openCouponDialog(coupon)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-accent/5 text-accent hover:bg-accent hover:text-white transition-all">
+                                        <button onClick={() => openCouponDialog(coupon)} className="w-8 h-8 flex items-center justify-center rounded-2xl bg-accent/5 text-accent hover:bg-accent hover:text-white transition-all">
                                             <Edit3 className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all">
+                                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="w-8 h-8 flex items-center justify-center rounded-2xl bg-rose-500/5 text-rose-600 hover:bg-rose-600 hover:text-white transition-all">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -456,7 +456,7 @@ const AdminSettings = () => {
 
             {/* Coupon Dialog */}
             <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
-                <DialogContent className="max-w-xl rounded-[3rem] bg-white p-0 overflow-hidden border-none shadow-2xl">
+                <DialogContent className="max-w-xl rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-black border-0 outline-none focus:ring-0">
                     <div className="bg-[#111] p-10 text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-48 h-48 bg-accent/10 rounded-full -mr-24 -mt-24 blur-3xl" />
                         <div className="flex items-center gap-4 relative z-10">
@@ -468,7 +468,7 @@ const AdminSettings = () => {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSaveCoupon} className="p-10 space-y-6">
+                    <form onSubmit={handleSaveCoupon} className="p-10 space-y-6 bg-white">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-3">
                                 <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Access Code</Label>

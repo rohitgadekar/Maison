@@ -427,13 +427,23 @@ const Index = () => {
         </section>
 
         {/* Testimonials */}
-        <section className="py-32 bg-[#FFFAF5]">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col items-center text-center mb-24">
-              <span className="text-accent font-black uppercase tracking-[0.5em] text-[10px] mb-6">Vocal Curations</span>
-              <h2 className="font-heading text-5xl sm:text-6xl font-bold tracking-tighter italic">The Archive <span className="not-italic text-accent">Portraits.</span></h2>
+        <section className="py-48 bg-white relative overflow-hidden">
+          {/* Subtle decorative elements */}
+          <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
+            <h2 className="font-heading text-[25rem] font-black uppercase -rotate-12 translate-x-[-10%] translate-y-[20%]">Portraits</h2>
+          </div>
+
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="flex flex-col items-center text-center mb-32">
+              <span className="text-accent font-black uppercase tracking-[0.8em] text-[11px] mb-8 bg-accent/5 px-8 py-3 rounded-full italic animate-pulse">Vocal Reflections</span>
+              <h2 className="font-heading text-6xl sm:text-8xl font-black tracking-tighter leading-[0.85] mb-12">
+                The Archive <br />
+                <span className="italic font-light text-accent">Portraits.</span>
+              </h2>
+              <div className="w-24 h-px bg-accent/20" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
               {[
                 {
                   name: "Sarah Montgomery",
@@ -454,22 +464,35 @@ const Index = () => {
                   rating: 5
                 }
               ].map((testimonial, index) => (
-                <div key={index} className="bg-white p-16 rounded-[4rem] shadow-sm border border-accent/5 relative group hover:shadow-[0_80px_100px_-30px_rgba(0,0,0,0.1)] hover:-translate-y-4 transition-all duration-1000">
-                  <div className="flex gap-1.5 mb-10 opacity-20 group-hover:opacity-100 transition-opacity">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-3 h-3 fill-accent text-accent" />
-                    ))}
-                  </div>
-                  <blockquote className="text-primary/70 mb-12 text-xl leading-relaxed font-medium italic tracking-tight">
-                    {testimonial.review}
-                  </blockquote>
-                  <div className="pt-8 border-t border-accent/10 flex items-center justify-between">
+                <div
+                  key={index}
+                  className="group relative"
+                >
+                  <div className="absolute inset-0 bg-accent/10 rounded-[4rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                  <div className="relative h-full bg-white p-10 sm:p-14 rounded-[3.5rem] border border-accent/5 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_80px_100px_-30px_rgba(0,0,0,0.15)] transition-all duration-1000 transform hover:-translate-y-6 flex flex-col justify-between overflow-hidden">
+                    {/* Glass highlight */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-accent/10 transition-colors" />
+
                     <div>
-                      <p className="font-heading font-black text-xl uppercase tracking-tighter">{testimonial.name}</p>
-                      <p className="text-accent text-[9px] font-black uppercase tracking-[0.4em] mt-3 italic">{testimonial.location}</p>
+                      <div className="flex gap-2 mb-8 transform group-hover:scale-110 transition-transform duration-700 origin-left">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-accent text-accent transition-all duration-500" style={{ transitionDelay: `${i * 100}ms` }} />
+                        ))}
+                      </div>
+                      <blockquote className="text-primary/70 mb-10 text-xl leading-relaxed font-medium italic tracking-tight relative">
+                        <span className="absolute -top-8 -left-8 text-7xl text-accent/10 font-heading not-italic">"</span>
+                        {testimonial.review}
+                      </blockquote>
                     </div>
-                    <div className="w-12 h-12 bg-accent/5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Star className="w-5 h-5 text-accent" />
+
+                    <div className="pt-8 border-t border-accent/10 flex items-center justify-between">
+                      <div>
+                        <p className="font-heading font-black text-xl uppercase tracking-tighter group-hover:text-accent transition-colors">{testimonial.name}</p>
+                        <p className="text-accent text-[9px] font-black uppercase tracking-[0.4em] mt-2 italic opacity-60">{testimonial.location}</p>
+                      </div>
+                      <div className="w-12 h-12 bg-accent/5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        <Star className="w-4 h-4 text-accent" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -479,21 +502,46 @@ const Index = () => {
         </section>
 
         {/* Instagram Feed / Gallery */}
-        <section className="py-32 bg-white relative overflow-hidden">
+        <section className="py-48 bg-white relative overflow-hidden">
+          {/* Subtle background watermark */}
+          <div className="absolute top-0 right-0 w-full h-full opacity-[0.02] pointer-events-none select-none">
+            <h2 className="font-heading text-[25rem] font-black uppercase rotate-90 translate-x-[30%] translate-y-[20%]">Gallery</h2>
+          </div>
+
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="flex flex-col items-center text-center mb-20 space-y-4">
-              <span className="text-accent font-black uppercase tracking-[0.5em] text-[10px]">Visual Reflections</span>
-              <h2 className="font-heading text-5xl font-black mb-4 tracking-tighter">The Archival <span className="italic font-light text-accent">Lens.</span></h2>
-              <p className="text-primary/30 flex items-center gap-3 font-black uppercase tracking-widest text-[10px] pb-2 border-b-2 border-accent/10">
-                Observe <span className="text-accent underline">@maison_archive</span>
-              </p>
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 mb-24">
+              <div className="max-w-3xl">
+                <span className="text-accent text-[11px] font-black uppercase tracking-[0.8em] mb-8 block italic animate-pulse">Visual Reflections /</span>
+                <h2 className="font-heading text-6xl sm:text-[7.5rem] font-black tracking-tighter leading-[0.8] mb-10">
+                  Observe the <br />
+                  <span className="italic font-light text-accent">Archival Lens.</span>
+                </h2>
+                <p className="text-primary/40 text-2xl italic font-medium leading-relaxed max-w-xl">
+                  A real-time broadcast of the physical atelier—where material integrity meets the daily ritual of discovery.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start lg:items-end gap-6 pb-2">
+                <p className="text-primary/30 font-black uppercase tracking-[0.4em] text-[10px] italic">Join the Conversation</p>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-6 text-primary hover:text-accent transition-all duration-700 pb-2 border-b-2 border-accent/10"
+                >
+                  <span className="font-heading text-3xl font-bold tracking-tighter">@maison_archive</span>
+                  <div className="w-12 h-12 rounded-full bg-accent/5 flex items-center justify-center group-hover:bg-accent group-hover:text-white group-hover:rotate-45 transition-all duration-500">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                </a>
+              </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
               {[
-                "https://images.unsplash.com/photo-1608144716563-b525e86fabb4?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDV8fHxlbnwwfHx8fHw%3D",
+                "https://images.unsplash.com/photo-1691692677524-7ee6b93adffd?q=80&w=1364&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                "https://images.unsplash.com/photo-1680614121680-b9a187c48832?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDQ2fHx8ZW58MHx8fHx8",
                 "https://images.unsplash.com/photo-1706824258534-c3740a1ae96b?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDE1fHx8ZW58MHx8fHx8",
-                "https://images.unsplash.com/photo-1645110365977-632cf2b545a1?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDl8fHxlbnwwfHx8fHw%3D",
-                "https://images.unsplash.com/photo-1640525134371-8396e9761af0?q=80&w=1364&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                "https://images.unsplash.com/photo-1640525241168-1eb6cc17c319?q=80&w=1364&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
               ].map((image, index) => (
                 <div key={index} className="aspect-[3/4] rounded-[3rem] overflow-hidden group cursor-pointer relative shadow-lg hover:shadow-2xl transition-all duration-700">
                   <img
@@ -513,76 +561,70 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Newsletter */}
-        <section className="py-32 bg-white">
+        {/* Compact Membership Inlay */}
+        <section className="py-24 bg-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-[#0A0A0A] text-white rounded-[4rem] overflow-hidden relative group shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)]">
-              {/* Decorative Archival Elements */}
-              <div className="absolute top-0 right-0 w-full h-full opacity-[0.03] pointer-events-none overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[30rem] font-black uppercase rotate-12 whitespace-nowrap">
-                  Registry
+            <div className="bg-[#0A0A0A] text-white rounded-[3.5rem] overflow-hidden relative group shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)]">
+              {/* Specialized Archival Watermark */}
+              <div className="absolute top-0 right-0 w-full h-full opacity-[0.02] pointer-events-none overflow-hidden select-none">
+                <div className="absolute top-1/2 left-0 -translate-y-1/2 font-heading text-[20rem] font-black uppercase tracking-tighter -rotate-6 whitespace-nowrap">
+                  Maison Archive
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2">
-                <div className="p-10 sm:p-20 lg:p-32 flex flex-col justify-center relative z-10">
-                  <div className="inline-flex items-center gap-3 mb-8">
-                    <div className="w-12 h-px bg-accent/30" />
-                    <span className="text-accent uppercase tracking-[0.6em] text-[9px] font-black block italic">Inner Circle Access</span>
+              <div className="grid grid-cols-1 lg:grid-cols-12 relative z-10">
+                <div className="lg:col-span-7 p-12 sm:p-20 flex flex-col justify-center">
+                  <div className="flex items-center gap-4 mb-10">
+                    <span className="w-10 h-px bg-accent/30" />
+                    <span className="text-accent uppercase tracking-[0.8em] text-[10px] font-black italic">Bespoke Invitations</span>
                   </div>
 
-                  <h2 className="font-heading text-6xl sm:text-7xl lg:text-8xl font-black mb-10 leading-[0.85] tracking-tighter">
-                    Access the <br />
-                    <span className="text-white/20 italic font-light">Sub-Archive.</span>
+                  <h2 className="font-heading text-5xl sm:text-6xl font-black mb-8 leading-[0.9] tracking-tighter">
+                    Join the <br />
+                    <span className="text-white/20 italic font-light hover:text-white transition-colors duration-1000">Private Registry.</span>
                   </h2>
 
-                  <p className="text-white/40 mb-16 text-xl lg:text-2xl max-w-md leading-relaxed font-medium italic">
-                    "Reserved for ceux qui savent. Be the first to witness archival awakenings and private atelier releases."
+                  <p className="text-white/40 mb-12 text-lg max-w-sm leading-relaxed font-black uppercase tracking-widest text-[9px] ">
+                    Reserved for ceux qui savent. Witness archival awakenings and private atelier releases.
                   </p>
 
-                  <form className="flex flex-col gap-6 w-full max-w-xl group/form">
-                    <div className="relative">
+                  <form className="flex flex-col sm:flex-row gap-4 w-full max-w-xl group/form relative">
+                    <div className="flex-1 relative">
                       <input
                         type="email"
-                        placeholder="ENTER YOUR CORRESPONDENCE..."
-                        className="w-full h-20 sm:h-24 bg-white/[0.03] border border-white/10 rounded-[2rem] px-10 text-[11px] font-black uppercase tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-accent focus:bg-white/5 transition-all backdrop-blur-2xl shadow-inner outline-none"
+                        placeholder="AUTHENTICATE EMAIL..."
+                        className="w-full h-16 bg-white/[0.05] border border-white/10 rounded-2xl px-8 text-[10px] font-black uppercase tracking-[0.3em] text-white placeholder:text-white/20 focus:outline-none focus:border-accent focus:bg-white/10 transition-all duration-500"
                       />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:block">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center opacity-30 group-focus-within/form:opacity-100 group-focus-within/form:text-accent transition-all">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                      </div>
                     </div>
-
                     <button
                       type="submit"
-                      className="h-20 sm:h-24 w-full sm:w-auto sm:px-16 bg-accent text-white font-black uppercase tracking-[0.4em] text-[10px] rounded-[2rem] hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 transform translate-y-0 hover:-translate-y-1 duration-500"
+                      className="h-16 px-10 bg-accent text-white font-black uppercase tracking-[0.4em] text-[10px] rounded-2xl hover:bg-white hover:text-black transition-all duration-500 shadow-xl active:scale-95 whitespace-nowrap"
                     >
-                      Authenticate Membership
+                      Enter Registry
                     </button>
                   </form>
 
-                  <div className="mt-12 flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/10 italic">
+                  <div className="mt-10 flex items-center gap-4 text-[8px] font-black uppercase tracking-[0.4em] text-white/20 italic">
                     <Shield className="w-3.5 h-3.5" />
-                    Encrypted Registry Protocol
+                    Encrypted Member Protocol
                   </div>
                 </div>
 
-                <div className="relative min-h-[500px] lg:min-h-full overflow-hidden group/image">
+                <div className="lg:col-span-5 relative min-h-[350px] lg:min-h-full overflow-hidden">
                   <img
-                    src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200&h=1200&fit=crop"
-                    alt="Archive Collection"
-                    className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover/image:scale-105 group-hover/image:opacity-50 transition-all duration-[5s] ease-out"
+                    src="https://images.unsplash.com/photo-1636556031330-90d2df1c114c?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDczfHx8ZW58MHx8fHx8"
+                    alt="Atelier View"
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 mix-blend-multiply"
                   />
-                  {/* Geometric Overlays */}
-                  <div className="absolute inset-x-12 bottom-12 p-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] transform translate-y-4 opacity-0 group-hover/image:translate-y-0 group-hover/image:opacity-100 transition-all duration-1000">
-                    <p className="text-[9px] font-black uppercase tracking-[0.5em] text-accent mb-4 block italic">Volume Status: Active</p>
-                    <p className="text-white/60 text-sm font-medium leading-relaxed italic">
-                      "Each member gains a unique entry ID upon authentication, unlocking private views of the physical atelier archives."
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-transparent hidden lg:block" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent lg:hidden" />
+
+                  {/* Floating Inlay Card */}
+                  <div className="absolute right-8 bottom-8 p-6 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-br-[2rem] rounded-tl-[2rem] rounded-tr-[8px] rounded-bl-[8px] max-w-[200px] transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-1000 hidden sm:block">
+                    <p className="text-white/60 text-[9px] font-black uppercase tracking-widest leading-relaxed italic">
+                      Members receive private coordinate artifacts and atelier insights.
                     </p>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-transparent lg:block hidden" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent lg:hidden" />
                 </div>
               </div>
             </div>

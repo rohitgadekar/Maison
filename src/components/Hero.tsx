@@ -62,7 +62,7 @@ export function Hero() {
             {/* <div className="absolute -top-12 -right-12 w-full h-full bg-accent/10  -z-10 rounded-[4rem]" /> */}
             {/* <div className="absolute -bottom-12 -left-12 w-4/5 h-4/5 border-2 border-accent/10 -z-10 rounded-[4rem]" /> */}
 
-            <div className="absolute top-1 right-1 w-32 h-32 bg-white/30 backdrop-blur-xl rounded-tr-[3.8rem] rounded-bl-[3.8rem] rounded-br-[5px] rounded-tl-[5px] flex items-center justify-center p-4 z-20 shadow-xl border border-white/50 hidden xl:flex ">
+            <div className="absolute top-1 right-1 w-32 h-32 bg-white/30 backdrop-blur-xl rounded-tr-[3.8rem] rounded-bl-[3.8rem] rounded-br-[8px] rounded-tl-[8px] flex items-center justify-center p-4 z-20 shadow-xl border border-white/50 hidden xl:flex ">
               <p className="text-center  font-black leading-none text-primary">
                 <span className="text-4xl text-white">#1</span> <br />
                 <span className="text-[10px] uppercase tracking-widest text-white">Top Voice</span>

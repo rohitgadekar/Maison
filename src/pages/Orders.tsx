@@ -446,34 +446,34 @@ const Orders = () => {
                         {/* Info Sections - Balanced Columns */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 pt-16 border-t border-accent/5">
                           {/* Shipping Info */}
-                          <div className="bg-white p-8 sm:p-10 rounded-[3rem] border border-accent/5 shadow-sm group/card hover:shadow-xl transition-all duration-700">
+                          <div className="bg-accent/10 p-8 sm:p-10 rounded-[3rem] border border-accent/5 shadow-sm group/card hover:shadow-xl transition-all duration-700">
                             <div className="flex items-center gap-4 mb-8">
                               <div className="w-10 h-10 rounded-full bg-accent/5 flex items-center justify-center">
                                 <MapPin className="w-5 h-5 text-accent" />
                               </div>
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Consignee Site</h4>
+                              <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-primary">Consignee Site</h4>
                             </div>
                             {order.shipping_address ? (
                               <div className="space-y-5">
-                                <p className="font-heading text-xl sm:text-2xl font-black text-primary/90 leading-tight">{order.shipping_name || userName || user?.email}</p>
+                                <p className="font-heading text-xl sm:text-2xl font-black text-primary leading-tight">{order.shipping_name || userName || user?.email}</p>
                                 <div className="space-y-1.5">
-                                  <p className="text-[10px] font-bold text-primary/30 underline italic break-all">{user?.email}</p>
+                                  <p className="text-[10px] font-bold text-primary underline italic break-all">{user?.email}</p>
                                   {userPhone && <p className="text-[10px] font-black text-accent tracking-[0.2em]">{userPhone}</p>}
                                 </div>
                                 <div className="pt-6 border-t border-accent/5">
-                                  <p className="text-base font-medium italic text-primary/60 leading-relaxed">
+                                  <p className="text-base font-medium italic text-primary leading-relaxed">
                                     {order.shipping_address}
                                   </p>
-                                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/20 mt-2.5">
+                                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary mt-2.5">
                                     {order.shipping_city}{order.shipping_postal_code ? ` — ${order.shipping_postal_code}` : ''}
                                   </p>
                                   {order.shipping_country && (
-                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/20">{order.shipping_country}</p>
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">{order.shipping_country}</p>
                                   )}
                                 </div>
                                 {order.shipping_phone && (
                                   <div className="pt-5 border-t border-accent/5">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 block italic opacity-50 font-medium">Logistics Contact Reference</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 block italic  font-medium">Logistics Contact Reference</span>
                                     <p className="text-sm font-bold tracking-tight text-primary/70">{order.shipping_phone}</p>
                                   </div>
                                 )}
@@ -490,9 +490,9 @@ const Orders = () => {
                             </div>
                             <div className="flex items-center gap-4 mb-8 relative z-10">
                               <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5">
-                                <CreditCard className="w-5 h-5 text-white/30" />
+                                <CreditCard className="w-5 h-5 text-white" />
                               </div>
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Valuation Ledger</h4>
+                              <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-white">Valuation Ledger</h4>
                             </div>
                             <div className="space-y-5 relative z-10">
                               {(() => {
@@ -513,27 +513,27 @@ const Orders = () => {
                                 return (
                                   <>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Gross Value</span>
-                                      <Price amount={calculatedGross} className="text-base font-bold text-white/90" />
+                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Gross Value</span>
+                                      <Price amount={calculatedGross} className="text-base font-bold text-white" />
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{order.shipping_method_name || 'Standard Logistics'}</span>
-                                      <Price amount={shipping} className="text-base font-bold text-white/90" />
+                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{order.shipping_method_name || 'Standard Logistics'}</span>
+                                      <Price amount={shipping} className="text-base font-bold text-white" />
                                     </div>
                                     <div className="flex justify-between items-center text-accent">
                                       <span className="text-[10px] font-black uppercase tracking-[0.3em]">Incentive {order.coupons?.code ? `(${order.coupons.code})` : 'Applied'}</span>
                                       <div className="flex items-center text-base font-bold">-<Price amount={Number(order.discount_amount || 0)} /></div>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Administrative (8%)</span>
-                                      <Price amount={tax} className="text-base font-bold text-white/90" />
+                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Administrative (8%)</span>
+                                      <Price amount={tax} className="text-base font-bold text-white" />
                                     </div>
                                     <div className="py-4">
                                       <div className="w-full h-px bg-white/5" />
                                     </div>
                                     <div className="flex justify-between items-end">
                                       <div>
-                                        <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/30 block mb-1.5">Final Settlement</span>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white block mb-1.5">Final Settlement</span>
                                         <span className="text-[10px] font-black uppercase tracking-widest text-accent italic opacity-80">Authenticated</span>
                                       </div>
                                       <span className="font-sans font-black text-2xl tracking-tighter leading-none text-white">

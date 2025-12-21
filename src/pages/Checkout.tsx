@@ -511,15 +511,14 @@ const Checkout = () => {
                       {savedAddresses.map((address) => (
                         <div
                           key={address.id}
-                          className={`relative flex items-start gap-4 p-8 rounded-[2rem] border transition-all duration-500 cursor-pointer group ${selectedAddressId === address.id
+                          className={`relative flex items-start gap-4 p-8 rounded-[2rem] border transition-all duration-500 group ${selectedAddressId === address.id
                             ? 'border-accent bg-white shadow-xl'
                             : 'border-accent/10 bg-white/50 hover:bg-white hover:border-accent/30'
                             }`}
-                          onClick={() => handleAddressSelect(address.id)}
                         >
                           <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
                           <div className="flex-1">
-                            <label htmlFor={address.id} className="cursor-pointer">
+                            <Label htmlFor={address.id} className="cursor-pointer">
                               <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-2">{address.label}</p>
                               <p className="font-bold text-lg mb-1">{address.full_name}</p>
                               <p className="text-muted-foreground italic font-medium">
@@ -528,7 +527,7 @@ const Checkout = () => {
                               {address.phone && (
                                 <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mt-1">Ref: {address.phone}</p>
                               )}
-                            </label>
+                            </Label>
 
                             {selectedAddressId === address.id && !isEditing && (
                               <button
@@ -553,17 +552,16 @@ const Checkout = () => {
                       ))}
 
                       <div
-                        className={`flex items-center gap-4 p-8 rounded-[2rem] border border-dashed transition-all duration-500 cursor-pointer ${selectedAddressId === 'new'
+                        className={`flex items-center gap-4 p-8 rounded-[2rem] border border-dashed transition-all duration-500 ${selectedAddressId === 'new'
                           ? 'border-accent bg-white shadow-xl'
                           : 'border-accent/20 bg-transparent hover:bg-white/50'
                           }`}
-                        onClick={() => handleAddressSelect('new')}
                       >
                         <RadioGroupItem value="new" id="new-address" />
-                        <label htmlFor="new-address" className="flex items-center gap-3 cursor-pointer font-bold uppercase tracking-widest text-[10px] text-accent">
+                        <Label htmlFor="new-address" className="flex items-center gap-3 cursor-pointer font-bold uppercase tracking-widest text-[10px] text-accent flex-1 h-full">
                           <Plus className="w-4 h-4" />
                           New Archival Location
-                        </label>
+                        </Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -857,9 +855,9 @@ const Checkout = () => {
                           type="button"
                           onClick={handleApplyCoupon}
                           disabled={isApplyingCoupon || !couponCode}
-                          className="absolute right-2 top-2 h-10 px-6 bg-[#111] text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-accent transition-all disabled:opacity-50"
+                          className="absolute right-2 top-2 h-10 px-6 bg-accent text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 shadow-[0_5px_15px_-5px_rgba(200,80,50,0.4)]"
                         >
-                          {isApplyingCoupon ? 'Verifying...' : 'Apply Artifact'}
+                          {isApplyingCoupon ? 'Verifying...' : 'Apply'}
                         </button>
                       </div>
                       <Button
@@ -915,23 +913,23 @@ const Checkout = () => {
       {/* Available Coupons Dialog */}
       <Dialog open={isCouponsDialogOpen} onOpenChange={setIsCouponsDialogOpen}>
         <DialogContent className="max-w-2xl rounded-[2rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-3xl p-0 overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.1)] border">
-          <div className="p-10 sm:p-14 relative">
+          <div className="p-6 sm:p-14 relative">
             {/* Background Decorations */}
-            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
+            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none hidden sm:block">
               <Ticket className="w-64 h-64 text-accent rotate-12" />
             </div>
 
-            <DialogHeader className="mb-12 relative z-10">
-              <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Curated Ledger</span>
-              <DialogTitle className="font-heading text-4xl sm:text-5xl font-black tracking-tighter leading-tight">
+            <DialogHeader className="mb-8 sm:mb-12 relative z-10">
+              <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic text-center sm:text-left">Curated Ledger</span>
+              <DialogTitle className="font-heading text-3xl sm:text-5xl font-black tracking-tighter leading-tight text-center sm:text-left">
                 Available <span className="italic font-light text-accent">Privileges.</span>
               </DialogTitle>
-              <p className="text-[11px] text-primary/30 font-medium italic mt-2 max-w-sm">
+              <p className="text-[10px] sm:text-[11px] text-primary/30 font-medium italic mt-4 sm:mt-2 max-w-sm text-center sm:text-left mx-auto sm:mx-0">
                 Authenticating your archival status reveals exclusive valuation incentives. Select a privilege to evolve your acquisition.
               </p>
             </DialogHeader>
 
-            <div className="space-y-4 max-h-[400px] py-2 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[300px] py-2 overflow-y-auto pr-2 custom-scrollbar">
               {availableCoupons.length === 0 ? (
                 <div className="text-center py-20 bg-accent/[0.02] rounded-[2.5rem] border border-dashed border-accent/10">
                   <Ticket className="w-16 h-16 mx-auto text-accent/10 mb-6 animate-pulse" />
@@ -952,48 +950,48 @@ const Checkout = () => {
                       <div
                         key={coupon.id}
                         onClick={() => isEligible && handleSelectCoupon(coupon.code)}
-                        className={`group relative p-8 rounded-[2.5rem] border transition-all duration-700 ${isEligible
+                        className={`group relative p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border transition-all duration-700 ${isEligible
                           ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
                           : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
                           }`}
                       >
                         {/* Status Badge */}
-                        <div className="absolute top-6 right-8">
+                        <div className="absolute top-4 sm:top-6 right-6 sm:right-8">
                           {isEligible ? (
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-accent bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Active</span>
+                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-accent bg-accent/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/10">Active</span>
                           ) : (
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/30 bg-primary/5 px-4 py-1.5 rounded-full border border-primary/5">Restricted</span>
+                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-primary/30 bg-primary/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-primary/5">Restricted</span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-4 mb-6">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isEligible ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
-                            <Ticket className="w-5 h-5" />
+                        <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 ${isEligible ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
+                            <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div>
-                            <span className={`text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${isEligible ? 'text-primary' : 'text-primary/40'}`}>
+                            <span className={`text-base sm:text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${isEligible ? 'text-primary' : 'text-primary/40'}`}>
                               {coupon.code}
                             </span>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-primary/20 italic">Archival Privilege Code</span>
+                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-primary/20 italic">Archival Privilege Code</span>
                           </div>
                         </div>
 
-                        <p className="text-[11px] font-medium italic text-primary/50 mb-8 leading-relaxed max-w-[80%]">
+                        <p className="text-[10px] sm:text-[11px] font-medium italic text-primary/50 mb-6 sm:mb-8 leading-relaxed max-w-[85%] sm:max-w-[80%]">
                           {coupon.description}
                         </p>
 
-                        <div className={`p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 ${isEligible ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
+                        <div className={`p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 ${isEligible ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
                           <div className="flex flex-col">
-                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Benefit Tier</span>
-                            <span className="text-sm font-black text-accent tracking-tighter uppercase text-left">
+                            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Benefit Tier</span>
+                            <span className="text-[12px] sm:text-sm font-black text-accent tracking-tighter uppercase text-left">
                               {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% Valuation Drop` :
                                 coupon.discount_type === 'free_delivery' ? 'Complimentary Logistics' :
                                   <div className="flex items-center gap-1"><Price amount={Number(coupon.discount_value)} /> Direct Credit</div>}
                             </span>
                           </div>
                           <div className="flex flex-col items-end">
-                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Acquisition Threshold</span>
-                            <span className={`text-[10px] font-black ${isEligible ? 'text-primary/60' : 'text-rose-500/80'}`}>
+                            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Acquisition Threshold</span>
+                            <span className={`text-[9px] sm:text-[10px] font-black ${isEligible ? 'text-primary/60' : 'text-rose-500/80'}`}>
                               <Price amount={Number(coupon.min_order_amount)} />
                             </span>
                           </div>
