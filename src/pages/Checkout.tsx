@@ -95,47 +95,7 @@ const Checkout = () => {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-    setIsApplyingCoupon(true);
-    try {
-      const { data, error } = await supabase
-        .from('coupons' as any)
-        .select('*')
-        .eq('code', couponCode.toUpperCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) {
-        toast.error('Invalid or expired archival key');
-        return;
-      }
-
-      if (totalPrice < Number((data as any).min_order_amount)) {
-        toast.error(`Order valuation must exceed $${(data as any).min_order_amount} for this key`);
-        return;
-      }
-
-      setAppliedCoupon(data);
-      let calculatedDiscount = 0;
-      if ((data as any).discount_type === 'percentage') {
-        calculatedDiscount = totalPrice * (Number((data as any).discount_value) / 100);
-      } else if ((data as any).discount_type === 'flat') {
-        calculatedDiscount = Number((data as any).discount_value);
-      } else if ((data as any).discount_type === 'free_delivery') {
-        calculatedDiscount = shippingFee;
-      }
-      calculatedDiscount = roundPrice(calculatedDiscount);
-
-      setDiscountAmount(calculatedDiscount);
-      toast.success('Archival incentive applied');
-      setCouponCode('');
-      setIsCouponsDialogOpen(false);
-    } catch (err) {
-      console.error('Coupon error:', err);
-      toast.error('Failed to authenticate protocol');
-    } finally {
-      setIsApplyingCoupon(false);
-    }
+    handleApplyViaCode(couponCode);
   };
 
   const handleSelectCoupon = async (code: string) => {
@@ -219,10 +179,19 @@ const Checkout = () => {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (data) setAvailableCoupons(data);
+      if (data) {
+        // Filter coupons to only show:
+        // 1. Universal coupons (no customer_id/customer_ids)
+        // 2. Coupons assigned to THIS user
+        const filtered = data.filter((coupon: any) => {
+          const allowedCustomers = coupon.customer_ids || (coupon.customer_id ? [coupon.customer_id] : []);
+          return allowedCustomers.length === 0 || (user && allowedCustomers.includes(user.id));
+        });
+        setAvailableCoupons(filtered);
+      }
     };
-    fetchCoupons();
-  }, []);
+    if (user) fetchCoupons();
+  }, [user]);
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
@@ -425,12 +394,11 @@ const Checkout = () => {
         // We proceed as the order record is already secured in the archive
       }
 
-      // Increment coupon usage if applicable
+      // Increment coupon usage if applicable using secure RPC
       if (appliedCoupon) {
-        await supabase
-          .from('coupons' as any)
-          .update({ usage_count: (appliedCoupon.usage_count || 0) + 1 })
-          .eq('id', appliedCoupon.id);
+        await (supabase as any).rpc('increment_coupon_usage', {
+          p_coupon_id: appliedCoupon.id
+        });
       }
 
       setOrderComplete(true);
@@ -997,18 +965,25 @@ const Checkout = () => {
                   }))
                   .map((coupon) => {
                     const isEligible = totalPrice >= Number(coupon.min_order_amount);
+                    const isFullyUtilized = coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit;
+                    const canUse = isEligible && !isFullyUtilized;
+
                     return (
                       <div
                         key={coupon.id}
-                        onClick={() => isEligible && handleSelectCoupon(coupon.code)}
-                        className={`group relative p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border transition-all duration-700 ${isEligible
-                          ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
-                          : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
+                        onClick={() => canUse && handleSelectCoupon(coupon.code)}
+                        className={`group relative p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border transition-all duration-700 ${canUse
+                            ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
+                            : isFullyUtilized
+                              ? 'bg-white border-rose-500/20 cursor-not-allowed'
+                              : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
                           }`}
                       >
                         {/* Status Badge */}
                         <div className="absolute top-4 sm:top-6 right-6 sm:right-8">
-                          {isEligible ? (
+                          {isFullyUtilized ? (
+                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-rose-500 bg-rose-500/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-rose-500/10">Fully Utilized</span>
+                          ) : isEligible ? (
                             <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-accent bg-accent/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/10">Active</span>
                           ) : (
                             <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-primary/30 bg-primary/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-primary/5">Restricted</span>
@@ -1016,11 +991,11 @@ const Checkout = () => {
                         </div>
 
                         <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 ${isEligible ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 ${canUse ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
                             <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div>
-                            <span className={`text-base sm:text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${isEligible ? 'text-primary' : 'text-primary/40'}`}>
+                            <span className={`text-base sm:text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${canUse ? 'text-primary' : 'text-primary/40'}`}>
                               {coupon.code}
                             </span>
                             <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-primary/20 italic">Archival Privilege Code</span>
@@ -1031,7 +1006,7 @@ const Checkout = () => {
                           {coupon.description}
                         </p>
 
-                        <div className={`p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 ${isEligible ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
+                        <div className={`p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 mb-4 ${canUse ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
                           <div className="flex flex-col">
                             <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Benefit Tier</span>
                             <span className="text-[12px] sm:text-sm font-black text-accent tracking-tighter uppercase text-left">
@@ -1042,14 +1017,31 @@ const Checkout = () => {
                           </div>
                           <div className="flex flex-col items-end">
                             <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Acquisition Threshold</span>
-                            <span className={`text-[9px] sm:text-[10px] font-black ${isEligible ? 'text-primary/60' : 'text-rose-500/80'}`}>
+                            <span className={`text-[9px] sm:text-[10px] font-black ${canUse ? 'text-primary/60' : 'text-rose-500/80'}`}>
                               <Price amount={Number(coupon.min_order_amount)} />
                             </span>
                           </div>
                         </div>
 
+                        {/* Usage Statistics */}
+                        <div className={`px-4 py-3 rounded-xl border transition-all duration-500 ${isFullyUtilized
+                          ? 'bg-rose-500/5 border-rose-500/10'
+                          : 'bg-primary/[0.02] border-primary/[0.05]'
+                          }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-primary/30">Utilization Status</span>
+                            <span className={`text-[8px] sm:text-[9px] font-black ${isFullyUtilized ? 'text-rose-500' : 'text-primary/50'
+                              }`}>
+                              {coupon.usage_limit
+                                ? `${coupon.usage_count || 0} of ${coupon.usage_limit} ${(coupon.usage_count || 0) === 1 ? 'use' : 'uses'}`
+                                : `${coupon.usage_count || 0} ${(coupon.usage_count || 0) === 1 ? 'use' : 'uses'} • Unlimited`
+                              }
+                            </span>
+                          </div>
+                        </div>
+
                         {/* Hover Overlay Icon */}
-                        {isEligible && (
+                        {canUse && (
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none scale-50 group-hover:scale-100">
                             <div className="w-20 h-20 bg-accent/5 backdrop-blur-md rounded-full flex items-center justify-center border border-accent/10">
                               <Check className="w-8 h-8 text-accent stroke-[3px]" />

@@ -117,8 +117,9 @@ const AdminSettings = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const { usage_count, ...otherData } = couponForm;
             const couponData = {
-                ...couponForm,
+                ...(editingCoupon ? otherData : couponForm),
                 code: couponForm.code.toUpperCase(),
                 updated_at: new Date().toISOString()
             };
