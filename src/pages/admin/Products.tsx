@@ -49,6 +49,7 @@ const AdminProducts = () => {
   // NEW STATE FOR OVERVIEW DIALOG
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductStocks, setSelectedProductStocks] = useState<Record<string, number>>({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -298,9 +299,25 @@ const AdminProducts = () => {
   };
 
   // NEW: Open overview dialog
-  const openOverview = (product: Product) => {
+  const openOverview = async (product: Product) => {
     setSelectedProduct(product);
     setIsOverviewOpen(true);
+
+    // Fetch stocks for the selected product
+    const { data, error } = await supabase
+      .from('product_stocks' as any)
+      .select('size, quantity')
+      .eq('product_id', product.id);
+
+    if (!error && data) {
+      const stocks: Record<string, number> = {};
+      data.forEach((s: any) => {
+        stocks[s.size] = s.quantity;
+      });
+      setSelectedProductStocks(stocks);
+    } else {
+      setSelectedProductStocks({});
+    }
   };
 
   if (loading) {
@@ -814,15 +831,28 @@ const AdminProducts = () => {
 
               {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
                 <div className="mb-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Available Dimensions</p>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">Architectural Dimensions</p>
+                      <p className="text-[9px] text-accent italic">Inventory distribution across size metrics</p>
+                    </div>
                     <SizeChart data={selectedProduct.size_chart_data || selectedProduct.size_chart} />
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
                     {selectedProduct.sizes.map((size) => (
-                      <span key={size} className="bg-accent/10 px-6 py-3 rounded-full text-sm font-black uppercase tracking-wider">
-                        {size}
-                      </span>
+                      <div key={size} className="bg-white p-5 rounded-[2rem] border border-accent/5 shadow-sm hover:border-accent/20 transition-colors group/size">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary/30 mb-2 group-hover/size:text-accent transition-colors">{size}</p>
+                        <p className="text-2xl font-bold text-primary flex items-baseline gap-1">
+                          {selectedProductStocks[size] ?? 0}
+                          <span className="text-[10px] font-normal text-primary/40 uppercase tracking-tighter">Units</span>
+                        </p>
+                        <div className="w-full h-1 bg-accent/5 rounded-full mt-3 overflow-hidden">
+                          <div
+                            className="h-full bg-accent transition-all duration-1000"
+                            style={{ width: `${Math.min(((selectedProductStocks[size] ?? 0) / 50) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

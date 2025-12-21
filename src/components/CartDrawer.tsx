@@ -74,6 +74,11 @@ export function CartDrawer() {
                         )}
                         <Price amount={item.price} className="text-sm font-bold italic" />
                       </div>
+                      {item.inventory === 0 && (
+                        <span className="text-[10px] text-rose-500 font-black uppercase tracking-widest mt-2 block">
+                          Out of Stock
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 bg-white px-1 py-1 rounded-full border border-accent/10 shadow-sm">
@@ -83,12 +88,12 @@ export function CartDrawer() {
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-xs font-black w-4 text-center">
+                        <span className={`text-xs font-black w-4 text-center ${item.inventory === 0 ? 'text-rose-500' : ''}`}>
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          disabled={item.quantity >= item.inventory}
+                          disabled={item.inventory === 0 || item.quantity >= item.inventory}
                           className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:cursor-not-allowed disabled:hover:text-current"
                         >
                           <Plus className="w-3 h-3" />

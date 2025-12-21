@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   Settings,
-  Layers
+  Layers,
+  Ticket
 } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
 
@@ -98,6 +99,7 @@ const AdminDashboard = () => {
     { path: '/admin/orders', icon: ShoppingCart, label: 'Order Registry' },
     { path: '/admin/customers', icon: Users, label: 'Member Directory' },
     { path: '/admin/shipping', icon: Truck, label: 'Logistics Matrix' },
+    { path: '/admin/coupons', icon: Ticket, label: 'Incentive Keys' },
     { path: '/admin/settings', icon: Settings, label: 'Atelier Settings' },
   ];
 

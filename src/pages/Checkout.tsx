@@ -738,8 +738,8 @@ const Checkout = () => {
                 <div className="flex flex-col gap-4">
                   <Button
                     type="submit"
-                    className="w-full h-20 bg-primary text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all rounded-[2.5rem] mt-4"
-                    disabled={isProcessing}
+                    className={`w-full h-20 font-black uppercase tracking-[0.2em] text-sm shadow-2xl transition-all rounded-[2.5rem] mt-4 ${items.some(i => i.inventory === 0) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary text-white hover:bg-black hover:scale-[1.02] active:scale-[0.98]'}`}
+                    disabled={isProcessing || items.some(i => i.inventory === 0)}
                   >
                     {isProcessing ? (
                       <div className="flex items-center gap-4">
@@ -748,6 +748,8 @@ const Checkout = () => {
                         </div>
                         <span>Verifying Archive...</span>
                       </div>
+                    ) : items.some(i => i.inventory === 0) ? (
+                      <span>Remove Depleted Artifacts</span>
                     ) : (
                       <div className="flex items-center gap-2 justify-center">
                         Confirm Acquisition (<Price amount={grandTotal} />)
@@ -779,24 +781,32 @@ const Checkout = () => {
                 <div className="space-y-8 mb-12 max-h-[400px] overflow-y-auto pr-4 scrollbar-hide">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-8 group">
-                      <div className="w-24 h-32 rounded-2xl overflow-hidden bg-accent/5 flex-shrink-0">
+                      <div className="w-24 h-32 rounded-2xl overflow-hidden bg-accent/5 flex-shrink-0 relative">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-700"
+                          className={`w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-700 ${item.inventory === 0 ? 'grayscale opacity-50' : ''}`}
                         />
+                        {item.inventory === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-white bg-rose-500 px-2 py-1 rounded-full">Depleted</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 py-2 flex flex-col justify-between">
                         <div>
-                          <h4 className="font-heading text-xl font-bold mb-1 tracking-tighter">{item.name}</h4>
+                          <h4 className={`font-heading text-xl font-bold mb-1 tracking-tighter ${item.inventory === 0 ? 'text-primary/40 line-through decoration-rose-500' : ''}`}>{item.name}</h4>
                           <div className="flex gap-4">
                             {item.size && (
                               <span className="text-[10px] font-black uppercase tracking-widest text-accent italic">Dim: {item.size}</span>
                             )}
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary/30 font-medium">Qty: {item.quantity}</span>
                           </div>
+                          {item.inventory === 0 && (
+                            <p className="text-[10px] text-rose-500 font-black uppercase tracking-widest mt-1">Item No Longer Available</p>
+                          )}
                         </div>
-                        <Price amount={item.price * item.quantity} className="text-xl font-black" />
+                        <Price amount={item.price * item.quantity} className={`text-xl font-black ${item.inventory === 0 ? 'text-primary/30' : ''}`} />
                       </div>
                     </div>
                   ))}
@@ -973,10 +983,10 @@ const Checkout = () => {
                         key={coupon.id}
                         onClick={() => canUse && handleSelectCoupon(coupon.code)}
                         className={`group relative p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border transition-all duration-700 ${canUse
-                            ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
-                            : isFullyUtilized
-                              ? 'bg-white border-rose-500/20 cursor-not-allowed'
-                              : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
+                          ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
+                          : isFullyUtilized
+                            ? 'bg-white border-rose-500/20 cursor-not-allowed'
+                            : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
                           }`}
                       >
                         {/* Status Badge */}

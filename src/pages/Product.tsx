@@ -130,6 +130,67 @@ const Product = () => {
     };
 
     initializeProductData();
+
+    // Realtime subscription for stock updates
+    const stockChannel = supabase
+      .channel(`product_stock_${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_stocks',
+          filter: `product_id=eq.${id}`,
+        },
+        async () => {
+          // Re-fetch individual size stocks
+          if (product) { // We might not have product in closure yet if we use stale state, but we can re-use fetch function logic
+            // Ideally we pass current product ID. 'id' from useParams is stable.
+            // We can just call fetchSizeStocks(product) but 'product' state is not available in this effect closure initial render
+            // unless we add it to dependency array which causes loop. 
+            // Better to re-fetch raw data:
+            const { data } = await (supabase as any)
+              .from('product_stocks')
+              .select('size, quantity')
+              .eq('product_id', id);
+
+            if (data) {
+              const stocks: Record<string, number> = {};
+              data.forEach((s: any) => { stocks[s.size] = s.quantity; });
+              setSizeStocks(stocks);
+            }
+          } else {
+            // Fallback if product state isn't ready, we just fetch stocks by ID
+            const { data } = await (supabase as any)
+              .from('product_stocks')
+              .select('size, quantity')
+              .eq('product_id', id);
+            if (data) {
+              const stocks: Record<string, number> = {};
+              data.forEach((s: any) => { stocks[s.size] = s.quantity; });
+              setSizeStocks(stocks);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'products',
+          filter: `id=eq.${id}`,
+        },
+        async (payload) => {
+          // Update total inventory
+          setProduct((prev) => prev ? { ...prev, inventory: payload.new.inventory } : null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(stockChannel);
+    };
   }, [id, navigate]);
 
   const getProductImages = (): string[] => {

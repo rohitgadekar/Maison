@@ -18,20 +18,43 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
-            fetchWishlist();
-        } else {
+        if (!user) {
             setWishlistItems([]);
             setLoading(false);
+            return;
         }
+
+        fetchWishlist();
+
+        const channel = supabase
+            .channel('wishlist_updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'wishlist',
+                    // No user_id filter to ensure deletes are caught reliably
+                },
+                () => {
+                    fetchWishlist();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user]);
 
     const fetchWishlist = async () => {
         setLoading(true);
         try {
+            if (!user) return;
             const { data, error } = await supabase
                 .from('wishlist' as any)
-                .select('product_id');
+                .select('product_id')
+                .eq('user_id', user.id);
 
             if (error) throw error;
             setWishlistItems(data.map((item: any) => item.product_id));

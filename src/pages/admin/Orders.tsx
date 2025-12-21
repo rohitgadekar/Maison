@@ -174,6 +174,61 @@ const AdminOrders = () => {
       updateData.tracking_url = url;
     }
 
+    // If cancelling, restore stock first
+    if (newStatus === 'cancelled') {
+      // Fetch current order to check status
+      const { data: currentOrder } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .single();
+
+      if (currentOrder && currentOrder.status !== 'cancelled') {
+        // 1. Fetch items to restore stock
+        const { data: itemsToRestore, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', orderId);
+
+        if (!itemsError && itemsToRestore) {
+          for (const item of itemsToRestore) {
+            // Restore size-specific stock
+            if (item.size) {
+              const { data: stockData } = await supabase
+                .from('product_stocks' as any)
+                .select('quantity')
+                .eq('product_id', item.product_id)
+                .eq('size', item.size)
+                .single();
+
+              if (stockData) {
+                const stock = stockData as any;
+                await supabase
+                  .from('product_stocks' as any)
+                  .update({ quantity: stock.quantity + item.quantity })
+                  .eq('product_id', item.product_id)
+                  .eq('size', item.size);
+              }
+            }
+
+            // Restore total product inventory
+            const { data: productData } = await supabase
+              .from('products')
+              .select('inventory')
+              .eq('id', item.product_id)
+              .single();
+
+            if (productData) {
+              await supabase
+                .from('products')
+                .update({ inventory: productData.inventory + item.quantity })
+                .eq('id', item.product_id);
+            }
+          }
+        }
+      }
+    }
+
     const { error } = await supabase
       .from('orders')
       .update(updateData)
