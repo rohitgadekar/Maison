@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 export function Hero() {
   return (
-    <section className="relative min-h-[90vh] lg:min-h-screen flex items-center bg-[#FFFAF5] overflow-hidden pt-32 pb-20 lg:pt-32 lg:pb-0">
+    <section className="relative min-h-[90vh] lg:min-h-screen flex items-center bg-[#FFFAF5] overflow-hidden pt-32 pb-20 lg:pt-20 lg:pb-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center animate-fade-in">
           <div className="max-w-2xl text-center lg:text-left">
@@ -33,17 +33,17 @@ export function Hero() {
 
             <div className="mt-12 lg:mt-20 flex items-center justify-center lg:justify-start gap-8 lg:gap-16">
               <div>
-                <p className="font-heading text-2xl lg:text-3xl font-black tracking-tighter">18k+</p>
+                <p className=" font-heading text-2xl lg:text-3xl font-black tracking-tighter">18k+</p>
                 <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] text-primary/30 font-black mt-2">Archives</p>
               </div>
               <div className="w-px h-10 lg:h-12 bg-accent/10" />
               <div>
-                <p className="font-heading text-2xl lg:text-3xl font-black tracking-tighter">4.96</p>
+                <p className=" font-heading text-2xl lg:text-3xl font-black tracking-tighter">4.96</p>
                 <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] text-primary/30 font-black mt-2">Prestige</p>
               </div>
               <div className="w-px h-10 lg:h-12 bg-accent/10" />
               <div>
-                <p className="font-heading text-2xl lg:text-3xl font-black tracking-tighter">Atelier</p>
+                <p className=" font-heading text-2xl lg:text-3xl font-black tracking-tighter">Atelier</p>
                 <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] text-primary/30 font-black mt-2">Origin</p>
               </div>
             </div>
@@ -52,20 +52,20 @@ export function Hero() {
           <div className="relative lg:block hidden">
             <div className="aspect-[4/5] relative z-10 rounded-[4rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] group">
               <img
-                src="https://images.unsplash.com/photo-1571513722275-4b41940f54b8?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                src="https://images.unsplash.com/photo-1616065297556-f05bc00c9a3e?q=80&w=1335&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="Maison Editorial"
-                className="w-full h-full object-cover transition-transform duration-[3s] group-hover:scale-110 grayscale-[0.2] group-hover:grayscale-0"
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 mix-blend-multiply"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             </div>
             {/* Decorative backgrounds */}
-            <div className="absolute -top-12 -right-12 w-full h-full bg-accent/5 -z-10 rounded-[4rem]" />
-            <div className="absolute -bottom-12 -left-12 w-4/5 h-4/5 border-2 border-accent/10 -z-10 rounded-[4rem]" />
+            {/* <div className="absolute -top-12 -right-12 w-full h-full bg-accent/10  -z-10 rounded-[4rem]" /> */}
+            {/* <div className="absolute -bottom-12 -left-12 w-4/5 h-4/5 border-2 border-accent/10 -z-10 rounded-[4rem]" /> */}
 
-            <div className="absolute top-20 -right-8 w-32 h-32 bg-white/80 backdrop-blur-xl rounded-full flex items-center justify-center p-4 z-20 shadow-xl border border-white/50 hidden xl:flex rotate-12">
-              <p className="text-center font-heading font-black leading-none text-primary">
-                <span className="text-4xl">25</span> <br />
-                <span className="text-[10px] uppercase tracking-widest text-[#D97706]">New</span>
+            <div className="absolute top-1 right-1 w-32 h-32 bg-white/30 backdrop-blur-xl rounded-tr-[3.8rem] rounded-bl-[3.8rem] rounded-br-[5px] rounded-tl-[5px] flex items-center justify-center p-4 z-20 shadow-xl border border-white/50 hidden xl:flex ">
+              <p className="text-center  font-black leading-none text-primary">
+                <span className="text-4xl text-white">#1</span> <br />
+                <span className="text-[10px] uppercase tracking-widest text-white">Top Voice</span>
               </p>
             </div>
           </div>

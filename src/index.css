@@ -170,7 +170,13 @@
     margin: 0; 
   }
   input[type=number] {
+    appearance: none;
     -moz-appearance: textfield; 
+  }
+
+  /* Hide print portal on screen */
+  #print-root {
+    display: none;
   }
 }
 
@@ -238,6 +244,8 @@
     margin: 0 !important;
     padding: 0 !important;
     min-height: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
     background: #FFFAF5 !important; /* Branded background */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -255,28 +263,41 @@
     z-index: -1;
   }
 
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
+  /* Hide the main application and all portals (Dialogs, etc.) during archival documentation generation */
+  body > *:not(#print-root) {
+    display: none !important;
   }
 
-  /* Only show the invoice and its children */
-  #invoice-print-area, #invoice-print-area * {
-    visibility: visible;
+  /* Display the print portal as the primary document layer */
+  #print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Explicitly promote the invoice and its internal semantic blocks to the primary print layer */
+  #invoice-print-area, 
+  #invoice-print-area header, 
+  #invoice-print-area footer {
+    display: block !important;
+    visibility: visible !important;
   }
 
   #invoice-print-area {
-    position: absolute; /* Allows for multiple pages */
-    left: 0;
-    top: 0;
-    width: 100%;
-    visibility: visible;
-    background: transparent !important;
-    padding: 20mm !important; /* Safety padding for printer hardware margins */
-    margin: 0 !important;
-    color: #1a1a1a !important;
-    box-sizing: border-box;
-    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    background: #FFFAF5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure all internal elements are visible */
+  #invoice-print-area * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Ensure page breaks don't cut through rows */

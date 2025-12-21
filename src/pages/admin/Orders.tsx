@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/accordion";
 import { PremiumLoader } from '@/components/PremiumLoader';
 import { calculateOrderTotals } from '@/lib/calculations';
+import { Invoice } from '@/components/Invoice';
 
 interface Order {
   id: string;
@@ -57,6 +58,7 @@ interface OrderItem {
   products: {
     name: string;
     image_url: string | null;
+    images: string[] | null;
   };
 }
 
@@ -121,7 +123,7 @@ const AdminOrders = () => {
     setPrintingOrder(orderId);
     setTimeout(() => {
       window.print();
-    }, 100);
+    }, 400);
   };
 
   const handleViewOrder = async (order: Order) => {
@@ -130,7 +132,7 @@ const AdminOrders = () => {
     // Fetch order items
     const { data: items } = await supabase
       .from('order_items')
-      .select('*, products(name, image_url)')
+      .select('*, products(name, image_url, images)')
       .eq('order_id', order.id);
 
     setOrderItems(items || []);
@@ -585,169 +587,17 @@ const AdminOrders = () => {
         </Dialog>
       </div>
 
-      {/* Modern Professional Invoice (Only visible during printing) */}
-      {invoiceOrder && selectedOrder && (
-        <div id="invoice-print-area" className="hidden print:block p-16 bg-[#FFFAF5] text-primary min-h-screen relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] rotate-[-15deg] pointer-events-none">
-            <h1 className="font-heading text-[20rem] font-black leading-none">MAISON</h1>
-          </div>
-
-          <header className="flex justify-between items-start border-b border-accent/10 pb-12 mb-12 relative z-10">
-            <div>
-              <h1 className="font-heading text-6xl font-black tracking-tighter text-primary mb-2">MAISON<span className="italic font-light text-accent">.</span></h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.5em] text-accent">Archival Fine Goods Atelier</p>
-            </div>
-            <div className="text-right">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.8em] text-accent mb-6">Acquisition Receipt</h2>
-              <div className="space-y-1 text-[10px] font-bold uppercase tracking-widest text-primary/60">
-                <p>Registry ID: <span className="text-primary">#{invoiceOrder.id.slice(0, 8).toUpperCase()}</span></p>
-                <p>Dated: <span className="text-primary">{new Date(invoiceOrder.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}</span></p>
-              </div>
-            </div>
-          </header>
-
-          <div className="grid grid-cols-2 gap-20 mb-16 relative z-10">
-            <div>
-              <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent mb-6 flex items-center gap-3">
-                <span className="w-8 h-px bg-accent/20" /> Consignee
-              </h3>
-              <div className="ml-11">
-                <p className="font-heading text-2xl font-black text-primary mb-2">{invoiceOrder.shipping_name || customerProfile?.full_name || "Anonymous Collector"}</p>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-primary/40 space-y-1">
-                  <p className="italic underline">{customerProfile?.email}</p>
-                  {customerProfile?.phone && <p>{customerProfile.phone}</p>}
-                </div>
-                <div className="mt-6 text-sm font-medium italic text-primary/70 leading-relaxed max-w-xs">
-                  {invoiceOrder.shipping_address || "Atelier Collection Point"}<br />
-                  {invoiceOrder.shipping_city}{invoiceOrder.shipping_postal_code ? `, ${invoiceOrder.shipping_postal_code}` : ''}<br />
-                  {invoiceOrder.shipping_country || "Global Distribution"}
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent mb-6 flex items-center gap-3">
-                <span className="w-8 h-px bg-accent/20" /> Registry Parameters
-              </h3>
-              <div className="ml-11 grid grid-cols-2 gap-8">
-                <div className="space-y-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Registry Status</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-accent italic">{invoiceOrder.status}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Valuation Reference</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">USD (Credit)</p>
-                </div>
-                {invoiceOrder.tracking_number && (
-                  <div className="col-span-2 pt-2 border-t border-accent/5">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-1">Logistics Reference</p>
-                    <p className="font-mono text-[10px] font-bold text-primary bg-accent/5 px-3 py-1.5 rounded inline-block">{invoiceOrder.tracking_number}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="relative z-10">
-            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent mb-8 flex items-center gap-3">
-              <span className="w-8 h-px bg-accent/20" /> Artifact Manifest
-            </h3>
-            <table className="w-full mb-16 border-collapse">
-              <thead>
-                <tr className="border-b border-accent/10">
-                  <th className="text-left py-6 text-[8px] font-black uppercase tracking-[0.4em] text-primary/30 w-16">Item</th>
-                  <th className="text-left py-6 text-[8px] font-black uppercase tracking-[0.4em] text-primary/30 px-6">Archival Designation</th>
-                  <th className="text-center py-6 text-[8px] font-black uppercase tracking-[0.4em] text-primary/30 w-24">Dim.</th>
-                  <th className="text-center py-6 text-[8px] font-black uppercase tracking-[0.4em] text-primary/30 w-24">Qty</th>
-                  <th className="text-right py-6 text-[8px] font-black uppercase tracking-[0.4em] text-primary/30 w-32">Valuation</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-accent/5">
-                {orderItems.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-8">
-                      <div className="w-12 h-16 bg-white rounded border border-accent/5 overflow-hidden">
-                        <img
-                          src={item.products.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'}
-                          alt={item.products.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </td>
-                    <td className="py-8 px-6 text-left">
-                      <p className="font-heading text-lg font-bold tracking-tight text-primary leading-tight">{item.products.name}</p>
-                      <p className="text-[8px] text-primary/30 mt-2 font-black uppercase tracking-widest">Entry UID: {item.id.slice(0, 8).toUpperCase()}</p>
-                    </td>
-                    <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.size || "STD"}</td>
-                    <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.quantity}</td>
-                    <td className="text-right py-8 font-heading text-lg font-bold text-primary">${Number(item.price).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-end mb-24 relative z-10">
-            <div className="w-72 space-y-4">
-              {(() => {
-                const items = orderItems.length > 0 ? orderItems : [];
-                const shipping = Number(invoiceOrder.shipping_fee || 0);
-                const discount = Number(invoiceOrder.discount_amount || 0);
-
-                let gross = items.length > 0
-                  ? items.reduce((sum, item) => sum + Number(item.price), 0)
-                  : 0;
-
-                if (gross === 0 && Number(invoiceOrder.total_amount) > 0) {
-                  gross = (Number(invoiceOrder.total_amount) - shipping + discount) / 1.08;
-                }
-
-                const { tax, total, gross: calculatedGross } = calculateOrderTotals(gross, shipping, discount);
-
-                return (
-                  <>
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
-                      <span>Gross Valuation</span>
-                      <span className="text-primary">${calculatedGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
-                      <span>Logistics ({invoiceOrder.shipping_method_name || 'Standard'})</span>
-                      <span className="text-primary">${shipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-accent">
-                      <span>Incentive {invoiceOrder.coupons?.code ? `(${invoiceOrder.coupons.code})` : 'Applied'}</span>
-                      <span>-${discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40 pb-4 border-b border-accent/10">
-                      <span>Fiscal Duty (8%)</span>
-                      <span className="text-primary">${tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline pt-2">
-                      <span className="text-[12px] font-black uppercase tracking-[0.4em] text-accent">Net Total</span>
-                      <span className="text-4xl font-black text-primary">${Number(invoiceOrder.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          <footer className="mt-auto pt-16 border-t border-accent/10 flex justify-between items-end relative z-10">
-            <div className="max-w-xs">
-              <p className="font-heading text-sm font-bold text-accent italic mb-2">Authenticated by Maison Atelier Management.</p>
-              <p className="text-[8px] text-primary/30 font-black uppercase tracking-[0.3em] leading-relaxed">This registry receipt serves as the official archival record of transfer for the artifacts listed above.</p>
-            </div>
-            <div className="flex flex-col items-end">
-              <div className="w-16 h-16 bg-accent/5 rounded-full flex items-center justify-center mb-4 border border-accent/10">
-                <span className="font-heading text-[10px] font-black text-accent italic">V1.0</span>
-              </div>
-              <p className="text-[7px] font-black uppercase tracking-[0.5em] text-primary/20">© MMXXV MAISON ATELIER ADMIN</p>
-            </div>
-          </footer>
-        </div>
+      {/* Archival Documentation Synthesis (Rendered via Portal) */}
+      {invoiceOrder && (
+        <Invoice
+          order={invoiceOrder as any}
+          items={orderItems as any}
+          customer={{
+            name: customerProfile?.full_name || invoiceOrder.shipping_name,
+            email: customerProfile?.email || null,
+            phone: customerProfile?.phone || invoiceOrder.shipping_phone
+          }}
+        />
       )}
     </div>
   );
