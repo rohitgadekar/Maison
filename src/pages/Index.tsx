@@ -427,7 +427,7 @@ const Index = () => {
         </section>
 
         {/* Testimonials */}
-        <section className="py-48 bg-white relative overflow-hidden">
+        <section className="py-12 bg-white relative overflow-hidden">
           {/* Subtle decorative elements */}
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
             <h2 className="font-heading text-[25rem] font-black uppercase -rotate-12 translate-x-[-10%] translate-y-[20%]">Portraits</h2>
@@ -614,7 +614,7 @@ const Index = () => {
                   <img
                     src="https://images.unsplash.com/photo-1636556031330-90d2df1c114c?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDczfHx8ZW58MHx8fHx8"
                     alt="Atelier View"
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 mix-blend-multiply"
+                    className="w-full h-full object-cover transition-transform duration-1000 grayscale group-hover:scale-110 mix-blend-multiply"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-transparent hidden lg:block" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent lg:hidden" />

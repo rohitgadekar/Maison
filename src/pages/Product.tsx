@@ -50,10 +50,15 @@ const Product = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [similarProducts, setSimilarProducts] = useState<ProductData[]>([]);
+  const [sizeStocks, setSizeStocks] = useState<Record<string, number>>({});
+  const [isStockLoading, setIsStockLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      if (!id) return;
+    const fetchProduct = async (): Promise<ProductData | null> => {
+      if (!id) {
+        setLoading(false);
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('products')
@@ -66,30 +71,65 @@ const Product = () => {
         console.error('Error fetching product:', error);
         toast.error('Product not found');
         navigate('/shop');
-        return;
+        setLoading(false);
+        return null;
       }
 
       setProduct(data);
       setQuantity(data.inventory > 0 ? 1 : 0);
-      if (data.sizes && data.sizes.length > 0) {
-        setSelectedSize(data.sizes[0]);
-      }
+      // Initial size selection will be handled after stock data is fetched
       setSelectedImageIndex(0);
       setLoading(false);
-
-      // Fetch similar products
-      const { data: similar } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category', data.category)
-        .eq('is_active', true)
-        .neq('id', data.id)
-        .limit(4);
-
-      setSimilarProducts(similar || []);
+      return data;
     };
 
-    fetchProduct();
+    const fetchSizeStocks = async (productData: ProductData) => {
+      setIsStockLoading(true);
+      const { data, error } = await (supabase as any)
+        .from('product_stocks')
+        .select('size, quantity')
+        .eq('product_id', productData.id);
+
+      if (!error && data) {
+        const stocks: Record<string, number> = {};
+        data.forEach((s: any) => {
+          stocks[s.size] = s.quantity;
+        });
+        setSizeStocks(stocks);
+
+        // Find first available size with stock
+        if (productData && productData.sizes) {
+          const firstAvailable = productData.sizes.find(s => (stocks[s] || 0) > 0);
+          if (firstAvailable) {
+            setSelectedSize(firstAvailable);
+          } else if (productData.sizes.length > 0) {
+            // If no stock for any size, default to the first size, but it will show out of stock
+            setSelectedSize(productData.sizes[0]);
+          }
+        }
+      }
+      setIsStockLoading(false);
+    };
+
+    const initializeProductData = async () => {
+      const productData = await fetchProduct();
+      if (productData) {
+        fetchSizeStocks(productData);
+
+        // Fetch similar products
+        const { data: similar } = await (supabase as any)
+          .from('products')
+          .select('*')
+          .eq('category', productData.category)
+          .eq('is_active', true)
+          .neq('id', productData.id)
+          .limit(4);
+
+        setSimilarProducts(similar || []);
+      }
+    };
+
+    initializeProductData();
   }, [id, navigate]);
 
   const getProductImages = (): string[] => {
@@ -115,7 +155,7 @@ const Product = () => {
     return images.slice(0, 5); // Max 5 images
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (silent = false) => {
     if (!product) return;
 
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
@@ -123,27 +163,30 @@ const Product = () => {
       return;
     }
 
-    if (product.inventory < quantity) {
+    const currentStock = selectedSize ? (sizeStocks[selectedSize] || 0) : product.inventory;
+
+    if (currentStock < quantity) {
       toast.error('Not enough stock available');
       return;
     }
 
     const images = getProductImages();
-    for (let i = 0; i < quantity; i++) {
-      addToCart({
-        id: selectedSize ? `${product.id}-${selectedSize}` : product.id,
-        productId: product.id,
-        name: product.name,
-        price: Number(product.price),
-        description: product.description || '',
-        category: product.category,
-        image: images[0],
-        size: selectedSize,
-        inventory: product.inventory
-      });
-    }
+    addToCart({
+      id: selectedSize ? `${product.id}-${selectedSize}` : product.id,
+      productId: product.id,
+      name: product.name,
+      price: Number(product.price),
+      description: product.description || '',
+      category: product.category,
+      image: images[0],
+      size: selectedSize,
+      quantity: quantity,
+      inventory: product.inventory
+    }, !silent);
 
-    toast.success('Added to cart!');
+    if (!silent) {
+      toast.success('Artifact added to collection');
+    }
   };
 
   const handlePrevImage = () => {
@@ -287,9 +330,9 @@ const Product = () => {
                     <span className="text-[10px] bg-accent/10 text-accent px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
                       {product.category}
                     </span>
-                    {product.inventory < 10 && product.inventory > 0 && (
+                    {selectedSize && sizeStocks[selectedSize] !== undefined && sizeStocks[selectedSize] < 5 && sizeStocks[selectedSize] > 0 && (
                       <span className="text-[10px] bg-rose-50 text-rose-500 px-4 py-1.5 rounded-full font-black uppercase tracking-widest animate-pulse">
-                        Low Archive Stock
+                        Dimensional Scarcity
                       </span>
                     )}
                   </div>
@@ -324,13 +367,22 @@ const Product = () => {
                         {product.sizes.map((size) => (
                           <button
                             key={size}
-                            onClick={() => setSelectedSize(size)}
+                            onClick={() => {
+                              setSelectedSize(size);
+                              if (sizeStocks[size] < quantity) {
+                                setQuantity(Math.max(1, sizeStocks[size] || 0));
+                              }
+                            }}
+                            disabled={sizeStocks[size] === 0}
                             className={`min-w-[64px] h-14 px-6 rounded-2xl border-2 transition-all duration-300 font-black text-xs uppercase tracking-widest ${selectedSize === size
                               ? 'border-primary bg-primary text-white shadow-xl scale-105'
-                              : 'border-accent/10 bg-white text-muted-foreground hover:border-accent hover:text-accent'
+                              : sizeStocks[size] === 0
+                                ? 'border-accent/5 bg-accent/5 text-primary/10 cursor-not-allowed grayscale'
+                                : 'border-accent/10 bg-white text-muted-foreground hover:border-accent hover:text-accent'
                               }`}
                           >
                             {size}
+                            {sizeStocks[size] === 0 && <span className="block text-[8px] mt-0.5 opacity-50">Depleted</span>}
                           </button>
                         ))}
                       </div>
@@ -344,23 +396,23 @@ const Product = () => {
                       <div className="flex items-center gap-4 bg-white px-2 py-2 rounded-full border border-accent/10 shadow-sm">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={product.inventory === 0 || quantity <= 1}
+                          disabled={!selectedSize || (sizeStocks[selectedSize] || 0) === 0 || quantity <= 1}
                           className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-current disabled:cursor-not-allowed"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="text-xl font-black w-8 text-center">{quantity}</span>
                         <button
-                          onClick={() => setQuantity(Math.min(product.inventory, quantity + 1))}
-                          disabled={product.inventory === 0 || quantity >= product.inventory}
+                          onClick={() => setQuantity(Math.min(selectedSize ? (sizeStocks[selectedSize] || 0) : product.inventory, quantity + 1))}
+                          disabled={!selectedSize || (sizeStocks[selectedSize] || 0) === 0 || quantity >= (selectedSize ? (sizeStocks[selectedSize] || 0) : product.inventory)}
                           className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-current disabled:cursor-not-allowed"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 italic">
-                        {product.inventory} artifacts available
-                      </p>
+                      {/* <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 italic">
+                        {selectedSize ? (sizeStocks[selectedSize] || 0) : product.inventory} artifacts available
+                      </p> */}
                     </div>
                   </div>
                 </div>
@@ -368,22 +420,22 @@ const Product = () => {
                 {/* Add to Cart */}
                 <div className="flex flex-col gap-4 mt-8">
                   <Button
-                    onClick={handleAddToCart}
+                    onClick={() => handleAddToCart()}
                     className="w-full h-20 bg-white border-2 border-primary text-primary font-black uppercase tracking-[0.2em] text-xs hover:bg-primary hover:text-white transition-all rounded-[2rem] shadow-lg group"
-                    disabled={product.inventory === 0}
+                    disabled={selectedSize ? (sizeStocks[selectedSize] || 0) === 0 : product.inventory === 0}
                   >
                     <ShoppingBag className="w-5 h-5 mr-3 group-hover:scale-125 transition-transform" />
-                    {product.inventory === 0 ? 'Archive Depleted' : 'Add to Collection'}
+                    {(selectedSize ? (sizeStocks[selectedSize] || 0) === 0 : product.inventory === 0) ? 'Archive Depleted' : 'Add to Collection'}
                   </Button>
 
                   <div className="flex gap-4">
                     <Button
                       onClick={() => {
-                        handleAddToCart();
+                        handleAddToCart(true);
                         navigate('/checkout');
                       }}
                       className="flex-1 h-20 bg-primary text-white font-black uppercase tracking-[0.2em] text-xs hover:bg-black transition-all rounded-[2rem] shadow-2xl"
-                      disabled={product.inventory === 0}
+                      disabled={selectedSize ? (sizeStocks[selectedSize] || 0) === 0 : product.inventory === 0}
                     >
                       Acquire Now
                     </Button>

@@ -157,23 +157,51 @@ const Checkout = () => {
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) return;
+      if (!data) {
+        toast.error('This incentive key is not recognized in the registry');
+        return;
+      }
 
-      if (totalPrice < Number((data as any).min_order_amount)) return;
+      const coupon = data as any;
 
-      setAppliedCoupon(data);
+      // 1. Check expiration
+      if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
+        toast.error('This archival incentive has expired');
+        return;
+      }
+
+      // 2. Check usage limit
+      if (coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit) {
+        toast.error('This incentive has reached its utilization limit');
+        return;
+      }
+
+      // 3. Check customer designation
+      const allowedCustomers = coupon.customer_ids || (coupon.customer_id ? [coupon.customer_id] : []);
+      if (allowedCustomers.length > 0 && (!user || !allowedCustomers.includes(user.id))) {
+        toast.error('This incentive is reserved for specific archival members');
+        return;
+      }
+
+      // 4. Check minimum threshold
+      if (totalPrice < Number(coupon.min_order_amount)) {
+        toast.error(`Minimum archival investment of $${coupon.min_order_amount} required`);
+        return;
+      }
+
+      setAppliedCoupon(coupon);
       let calculatedDiscount = 0;
-      if ((data as any).discount_type === 'percentage') {
-        calculatedDiscount = totalPrice * (Number((data as any).discount_value) / 100);
-      } else if ((data as any).discount_type === 'flat') {
-        calculatedDiscount = Number((data as any).discount_value);
-      } else if ((data as any).discount_type === 'free_delivery') {
+      if (coupon.discount_type === 'percentage') {
+        calculatedDiscount = totalPrice * (Number(coupon.discount_value) / 100);
+      } else if (coupon.discount_type === 'flat') {
+        calculatedDiscount = Number(coupon.discount_value);
+      } else if (coupon.discount_type === 'free_delivery') {
         calculatedDiscount = shippingFee;
       }
       calculatedDiscount = roundPrice(calculatedDiscount);
 
       setDiscountAmount(calculatedDiscount);
-      toast.success('Archival incentive applied');
+      toast.success('Archival incentive successfully validated');
       setCouponCode('');
       setIsCouponsDialogOpen(false);
     } catch (err) {
@@ -382,9 +410,32 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Deduct inventory using RPC for atomicity and size-specific handling
+      const { error: deductError } = await (supabase as any).rpc('deduct_inventory', {
+        p_items: items.map(item => ({
+          product_id: item.productId,
+          size: item.size?.trim() || 'N/A',
+          quantity: item.quantity
+        }))
+      });
+
+      if (deductError) {
+        console.error('Inventory deduction error:', deductError);
+        toast.error(`Stock synchronization alert: ${deductError.message}. Our curatorial team has been notified.`);
+        // We proceed as the order record is already secured in the archive
+      }
+
+      // Increment coupon usage if applicable
+      if (appliedCoupon) {
+        await supabase
+          .from('coupons' as any)
+          .update({ usage_count: (appliedCoupon.usage_count || 0) + 1 })
+          .eq('id', appliedCoupon.id);
+      }
+
       setOrderComplete(true);
       clearCart();
-      toast.success('Order placed successfully!');
+      toast.success('Archival piece secured in your personal registry');
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error('Failed to place order. Please try again.');

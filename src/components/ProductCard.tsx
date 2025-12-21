@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { useWishlist } from '@/context/WishlistContext';
 import { Price } from './Price';
 
+import { supabase } from '@/integrations/supabase/client';
+
 interface ProductCardProps {
   product: Product;
   index: number;
@@ -17,8 +19,27 @@ export function ProductCard({ product, index }: ProductCardProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [showSizePicker, setShowSizePicker] = useState(false);
+  const [sizeStocks, setSizeStocks] = useState<Record<string, number>>({});
+  const [isFetchingStocks, setIsFetchingStocks] = useState(false);
 
   const isWishlisted = isInWishlist(product.id);
+
+  const fetchSizeStocks = async () => {
+    setIsFetchingStocks(true);
+    const { data, error } = await (supabase as any)
+      .from('product_stocks')
+      .select('size, quantity')
+      .eq('product_id', product.id);
+
+    if (!error && data) {
+      const stocks: Record<string, number> = {};
+      data.forEach((s: any) => {
+        stocks[s.size] = s.quantity;
+      });
+      setSizeStocks(stocks);
+    }
+    setIsFetchingStocks(false);
+  };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -26,7 +47,7 @@ export function ProductCard({ product, index }: ProductCardProps) {
     toggleWishlist(product.id);
   };
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -36,10 +57,12 @@ export function ProductCard({ product, index }: ProductCardProps) {
     }
 
     if (product.sizes && product.sizes.length > 0) {
+      await fetchSizeStocks();
       setShowSizePicker(true);
     } else {
       addToCart({
         ...product,
+        id: product.id,
         productId: product.id,
         inventory: product.inventory
       });
@@ -50,8 +73,16 @@ export function ProductCard({ product, index }: ProductCardProps) {
   const handleSelectSize = (e: React.MouseEvent, size: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const stock = sizeStocks[size] ?? 0;
+    if (stock <= 0) {
+      toast.error(`The dimension ${size} is no longer available in the archive.`);
+      return;
+    }
+
     addToCart({
       ...product,
+      id: `${product.id}-${size}`,
       productId: product.id,
       size: size,
       inventory: product.inventory
@@ -115,15 +146,36 @@ export function ProductCard({ product, index }: ProductCardProps) {
               </button>
               <p className="text-white text-[10px] uppercase tracking-[0.3em] font-black mb-8">Select Your Size</p>
               <div className="flex flex-wrap justify-center gap-4">
-                {product.sizes?.map((size) => (
-                  <button
-                    key={size}
-                    onClick={(e) => handleSelectSize(e, size)}
-                    className="w-14 h-14 flex items-center justify-center border border-white/20 text-white hover:bg-white hover:text-black transition-all font-black text-sm rounded-full"
-                  >
-                    {size}
-                  </button>
-                ))}
+                {isFetchingStocks ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-[1px] bg-white relative overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
+                    </div>
+                    <span className="text-[8px] text-white/40 uppercase tracking-[0.3em] font-black">Syncing Material Registry</span>
+                  </div>
+                ) : (
+                  product.sizes?.map((size) => {
+                    const isAvailable = (sizeStocks[size] ?? 0) > 0;
+                    return (
+                      <button
+                        key={size}
+                        onClick={(e) => isAvailable && handleSelectSize(e, size)}
+                        disabled={!isAvailable}
+                        className={cn(
+                          "w-14 h-14 flex flex-col items-center justify-center border transition-all font-black text-xs rounded-full relative group/size",
+                          isAvailable
+                            ? "border-white/20 text-white hover:bg-white hover:text-black hover:scale-110 shadow-lg"
+                            : "border-white/5 bg-white/5 text-white/20 cursor-not-allowed grayscale"
+                        )}
+                      >
+                        <span>{size}</span>
+                        {!isAvailable && (
+                          <span className="absolute -bottom-1 text-[6px] uppercase tracking-tighter opacity-50">Depleted</span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}

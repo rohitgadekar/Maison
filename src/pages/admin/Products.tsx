@@ -63,7 +63,8 @@ const AdminProducts = () => {
     tag: '',
     brand: '',
     size_chart: '',
-    size_chart_data: null as SizeChartData | null
+    size_chart_data: null as SizeChartData | null,
+    size_stocks: {} as Record<string, number>
   });
 
   const fetchProducts = async () => {
@@ -114,7 +115,8 @@ const AdminProducts = () => {
       tag: '',
       brand: '',
       size_chart: '',
-      size_chart_data: null
+      size_chart_data: null,
+      size_stocks: {}
     });
     setEditingProduct(null);
   };
@@ -136,9 +138,26 @@ const AdminProducts = () => {
       tag: product.tag || '',
       brand: product.brand || '',
       size_chart: product.size_chart || '',
-      size_chart_data: product.size_chart_data || null
+      size_chart_data: product.size_chart_data || null,
+      size_stocks: {} // Will be populated by fetchStocks
     });
+    fetchStocks(product.id);
     setIsDialogOpen(true);
+  };
+
+  const fetchStocks = async (productId: string) => {
+    const { data, error } = await supabase
+      .from('product_stocks' as any)
+      .select('size, quantity')
+      .eq('product_id', productId);
+
+    if (!error && data) {
+      const stocks: Record<string, number> = {};
+      data.forEach((s: any) => {
+        stocks[s.size] = s.quantity;
+      });
+      setFormData(prev => ({ ...prev, size_stocks: stocks }));
+    }
   };
 
   const handleImageChange = (index: number, value: string) => {
@@ -168,6 +187,8 @@ const AdminProducts = () => {
       size_chart_data: formData.size_chart_data || null
     };
 
+    let savedProductId = editingProduct?.id;
+
     if (editingProduct) {
       const { error } = await supabase
         .from('products')
@@ -177,18 +198,51 @@ const AdminProducts = () => {
         toast.error(`Failed to update product: ${error.message}`);
         return;
       }
-      toast.success('Archive updated successfully');
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
-        .insert([productData]);
+        .insert([productData])
+        .select()
+        .single();
       if (error) {
         console.error('Insert error:', error);
         toast.error(`Failed to augment archive: ${error.message}`);
         return;
       }
-      toast.success('Artifact successfully added to archive');
+      savedProductId = data.id;
     }
+
+    // Update Size Stocks
+    if (savedProductId) {
+      // First, remove stocks for sizes that are no longer in the sizes array
+      const { error: deleteError } = await supabase
+        .from('product_stocks' as any)
+        .delete()
+        .eq('product_id', savedProductId)
+        .not('size', 'in', `(${sizesArray.map(s => `"${s}"`).join(',')})`); // Use quotes for sizes to handle spaces/special chars
+
+      if (deleteError) {
+        console.error('Error clearing stale stocks:', deleteError);
+      }
+
+      const stockInserts = sizesArray.map(size => ({
+        product_id: savedProductId,
+        size: size,
+        quantity: formData.size_stocks[size] || 0
+      }));
+
+      if (stockInserts.length > 0) {
+        const { error: stockError } = await supabase
+          .from('product_stocks' as any)
+          .upsert(stockInserts, { onConflict: 'product_id,size' });
+
+        if (stockError) {
+          console.error('Stock update error:', stockError);
+        }
+      }
+    }
+
+    toast.success(editingProduct ? 'Archive updated successfully' : 'Artifact successfully added to archive');
     setIsDialogOpen(false);
     resetForm();
     fetchProducts();
@@ -486,7 +540,41 @@ const AdminProducts = () => {
                     value={formData.sizes}
                     onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
                     className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
+                    placeholder="S, M, L, XL"
                   />
+                </div>
+              </div>
+
+              {/* Size Stocks Section */}
+              <div className="space-y-6 bg-accent/5 p-8 rounded-[2.5rem] border border-accent/10">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mb-2 italic">Proportional Inventory Protocols</h4>
+                  <p className="text-[9px] text-primary/40 italic">Assign specific quantity thresholds to each architectural dimension</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {formData.sizes.split(',').map(s => s.trim()).filter(Boolean).map(size => (
+                    <div key={size} className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase tracking-widest ml-1 text-primary/30">{size} Stock</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.size_stocks[size] || 0}
+                        onChange={(e) => {
+                          const newStocks = { ...formData.size_stocks };
+                          newStocks[size] = parseInt(e.target.value) || 0;
+
+                          // Calculate total inventory
+                          const total = Object.values(newStocks).reduce((a, b) => a + b, 0);
+                          setFormData({
+                            ...formData,
+                            size_stocks: newStocks,
+                            inventory: total.toString()
+                          });
+                        }}
+                        className="h-12 rounded-xl border-accent/5 bg-white shadow-sm focus-visible:ring-accent"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 

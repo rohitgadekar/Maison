@@ -32,7 +32,7 @@ export function Footer({ className }: FooterProps) {
   return (
     <footer className={`bg-[#111] text-white py-32 ${className || ''}`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-20 mb-32">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-20 mb-12">
           {/* Brand & Mission */}
           <div className="lg:col-span-5 space-y-12">
             <div>
@@ -45,7 +45,7 @@ export function Footer({ className }: FooterProps) {
               </div>
             </div>
 
-            <p className="text-white max-w-sm text-xl leading-relaxed font-medium ">
+            <p className="text-white font-heading max-w-sm text-xl leading-relaxed font-medium ">
               Curating timeless artifacts for those who appreciate the intersection of heritage craftsmanship and modern architectural integrity.
             </p>
 

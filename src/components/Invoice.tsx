@@ -196,7 +196,7 @@ export const Invoice = ({ order, items, customer }: InvoiceProps) => {
                     </div>
                     {discount > 0 && (
                         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-accent">
-                            <span>Incentive {order.coupons?.code ? `(${order.coupons.code})` : 'Applied'}</span>
+                            <span>Incentive {order.coupons?.code ? `(${order.coupons.code})` : ''} Applied</span>
                             <span className="text-accent flex gap-1 justify-end">-<Price amount={discount} /></span>
                         </div>
                     )}

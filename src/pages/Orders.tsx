@@ -285,7 +285,7 @@ const Orders = () => {
                   <div
                     key={order.id}
                     id={`order-card-${order.id}`}
-                    className="order-card-item bg-white border border-accent/5 rounded-[3.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-700 group scroll-mt-32"
+                    className="order-card-item bg-white border border-accent/5 rounded-[3rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-700 group scroll-mt-32"
                   >
                     {/* Order Header - Acting as Trigger */}
                     <div
@@ -293,8 +293,38 @@ const Orders = () => {
                       onClick={() => toggleOrderExpansion(order.id)}
                     >
                       <div className="flex items-center gap-6">
-                        <div className={`w-14 h-14 bg-white rounded-2xl border border-accent/5 flex items-center justify-center shadow-inner transition-all duration-500 ${expandedOrders.has(order.id) ? 'rotate-12 bg-accent/5 border-accent/20' : ''}`}>
-                          <Package className={`w-6 h-6 ${expandedOrders.has(order.id) ? 'text-accent' : 'text-primary/20'}`} />
+                        <div className="relative group/badge">
+                          {(() => {
+                            const items = orderItems[order.id] || [];
+                            const firstItem = items[0];
+                            const product = firstItem ? (Array.isArray(firstItem.products) ? firstItem.products[0] : firstItem.products) : null;
+                            const imageUrl = product?.image_url || product?.images?.[0];
+
+                            if (imageUrl) {
+                              return (
+                                <>
+                                  <div className={`w-16 h-16 bg-white rounded-2xl border border-accent/5 overflow-hidden shadow-sm transition-all duration-700 ${expandedOrders.has(order.id) ? 'rotate-6 scale-110 z-20' : 'group-hover/badge:scale-105 group-hover/badge:-rotate-3'}`}>
+                                    <img
+                                      src={imageUrl}
+                                      alt={product?.name || 'Artifact'}
+                                      className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000"
+                                    />
+                                  </div>
+                                  {items.length > 1 && (
+                                    <div className="absolute -top-2 -right-2 bg-accent text-white w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-white shadow-xl z-30 animate-in fade-in zoom-in duration-500">
+                                      +{items.length - 1}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            }
+
+                            return (
+                              <div className={`w-14 h-14 bg-white rounded-2xl border border-accent/5 flex items-center justify-center shadow-inner transition-all duration-500 ${expandedOrders.has(order.id) ? 'rotate-12 bg-accent/5 border-accent/20' : ''}`}>
+                                <Package className={`w-6 h-6 ${expandedOrders.has(order.id) ? 'text-accent' : 'text-primary/20'}`} />
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div>
                           <h3 className="font-sans font-black text-xl sm:text-2xl tracking-tighter text-primary/40">

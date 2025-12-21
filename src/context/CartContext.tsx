@@ -22,12 +22,13 @@ interface ProductInput {
   category: string;
   image: string;
   size?: string;
+  quantity?: number;
   inventory: number;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: ProductInput) => void;
+  addToCart: (product: ProductInput, openDrawer?: boolean) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -43,7 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const addToCart = (product: ProductInput) => {
+  const addToCart = (product: ProductInput, openDrawer = true) => {
     setItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
@@ -56,9 +57,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : item
         );
       }
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prevItems, { ...product, quantity: product.quantity || 1 }];
     });
-    setIsCartOpen(true);
+    if (openDrawer) {
+      setIsCartOpen(true);
+    }
   };
 
   const removeFromCart = (productId: string) => {

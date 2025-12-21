@@ -42,7 +42,7 @@ const About = () => {
                 <img
                   src="https://images.unsplash.com/photo-1618236444721-4a8dba415c15?q=80&w=1474&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                   alt="Maison Aesthetic"
-                  className="w-full h-full object-cover  brightness-90 hover:scale-110 transition-transform duration-[3s]"
+                  className="w-full h-full object-cover  brightness-90 hover:scale-110 transition-transform duration-1000 group-hover:scale-110"
                 />
               </div>
               <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-accent rounded-full flex items-center justify-center p-8 text-white text-center leading-tight shadow-2xl animate-pulse">
@@ -81,9 +81,9 @@ const About = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <div className="relative min-h-[500px] overflow-hidden">
                 <img
-                  src="https://plus.unsplash.com/premium_photo-1670282393309-70fd7f8eb1ef?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                  src="https://images.unsplash.com/photo-1575299899528-a8a3dbcefc29?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDd8fHxlbnwwfHx8fHw%3D"
                   alt="Craftsmanship"
-                  className="absolute inset-0 w-full h-full object-cover grayscale opacity-60 group-hover:scale-105 transition-transform duration-[4s]"
+                  className="absolute inset-0 w-full h-full object-cover grayscale  transition-transform duration-1000 group-hover:scale-110  "
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#111] via-transparent to-transparent hidden lg:block" />
               </div>
@@ -112,7 +112,7 @@ const About = () => {
         </section>
 
         {/* Values Grid */}
-        <section className="py-32 bg-white rounded-[4rem] mb-32 shadow-sm">
+        <section className=" container mx-auto px-4 sm:px-6 lg:px-8 py-32 bg-white rounded-[4rem] mb-32 shadow-sm">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
               <div className="text-center group">
