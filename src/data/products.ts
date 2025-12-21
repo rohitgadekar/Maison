@@ -13,6 +13,10 @@ export interface Product {
   is_active?: boolean;
   sizes?: string[];
   tag?: string;
+  sku?: string;
+  brand?: string;
+  type?: 'product' | 'collection';
+  slug?: string;
   created_at?: string;
 }
 

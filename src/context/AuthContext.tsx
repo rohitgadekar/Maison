@@ -28,17 +28,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId)
         .eq('role', 'admin')
         .maybeSingle();
-      
+
       if (error) {
         console.error('Error checking admin role:', error);
         setIsAdmin(false);
-        return;
+      } else {
+        setIsAdmin(!!data);
       }
-      
-      setIsAdmin(!!data);
     } catch (error) {
       console.error('Error checking admin role:', error);
       setIsAdmin(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,15 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
 
-        // Defer admin check with setTimeout to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
+          // If user exists, loading will be set false by checkAdminRole
+          checkAdminRole(session.user.id);
         } else {
           setIsAdmin(false);
+          setLoading(false);
         }
       }
     );
@@ -65,10 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
+        // If user exists, loading will be set false by checkAdminRole
         checkAdminRole(session.user.id);
+      } else {
+        setLoading(false);
       }
     });
 
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,

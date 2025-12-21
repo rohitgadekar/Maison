@@ -30,12 +30,18 @@ export function ProductCard({ product, index }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
+    if (product.inventory === 0) {
+      toast.error("This archival piece has been depleted.");
+      return;
+    }
+
     if (product.sizes && product.sizes.length > 0) {
       setShowSizePicker(true);
     } else {
       addToCart({
         ...product,
-        productId: product.id
+        productId: product.id,
+        inventory: product.inventory
       });
       toast.success(`${product.name} added to cart`);
     }
@@ -47,7 +53,8 @@ export function ProductCard({ product, index }: ProductCardProps) {
     addToCart({
       ...product,
       productId: product.id,
-      size: size
+      size: size,
+      inventory: product.inventory
     });
     setShowSizePicker(false);
     toast.success(`${product.name} (${size}) added to cart`);
@@ -84,12 +91,18 @@ export function ProductCard({ product, index }: ProductCardProps) {
             />
           </button>
 
-          <button
-            onClick={handleQuickAdd}
-            className="absolute bottom-6 right-6 w-12 h-12 bg-white text-primary rounded-full flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 hover:bg-accent hover:text-white shadow-2xl z-20"
-          >
-            <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
-          </button>
+          {product.inventory === 0 ? (
+            <div className="absolute bottom-10 right-6 px-4 py-2 bg-rose-500/90 backdrop-blur-md text-white rounded-full flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-xl z-20">
+              <span className="text-[10px] font-black uppercase tracking-widest">Depleted</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleQuickAdd}
+              className="absolute bottom-6 right-6 w-12 h-12 bg-white text-primary rounded-full flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 hover:bg-accent hover:text-white shadow-2xl z-20"
+            >
+              <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
+            </button>
+          )}
 
           {/* Size Picker Overlay */}
           {showSizePicker && (

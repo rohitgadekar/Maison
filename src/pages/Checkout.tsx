@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin, Check, Ticket, X as LucideX } from 'lucide-react';
+import { PremiumLoader } from '@/components/PremiumLoader';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { SEO } from '@/components/SEO';
 import { Price } from '@/components/Price';
+import { calculateOrderTotals, roundPrice } from '@/lib/calculations';
 
 interface SavedAddress {
   id: string;
@@ -89,8 +91,7 @@ const Checkout = () => {
   }, []);
 
   const shippingFee = selectedProvider ? Number(selectedProvider.base_fee) : 0;
-  const taxAmount = totalPrice * 0.08;
-  const grandTotal = totalPrice + taxAmount + shippingFee - discountAmount;
+  const { tax: taxAmount, total: grandTotal } = calculateOrderTotals(totalPrice, shippingFee, discountAmount);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -123,6 +124,7 @@ const Checkout = () => {
       } else if ((data as any).discount_type === 'free_delivery') {
         calculatedDiscount = shippingFee;
       }
+      calculatedDiscount = roundPrice(calculatedDiscount);
 
       setDiscountAmount(calculatedDiscount);
       toast.success('Archival incentive applied');
@@ -168,6 +170,7 @@ const Checkout = () => {
       } else if ((data as any).discount_type === 'free_delivery') {
         calculatedDiscount = shippingFee;
       }
+      calculatedDiscount = roundPrice(calculatedDiscount);
 
       setDiscountAmount(calculatedDiscount);
       toast.success('Archival incentive applied');
@@ -390,16 +393,7 @@ const Checkout = () => {
     }
   };
 
-  const PremiumLoader = () => (
-    <div className="flex flex-col items-center justify-center py-32 space-y-6">
-      <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
-        <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
-        Securing Session...
-      </span>
-    </div>
-  );
+
 
   if (authLoading) {
     return (

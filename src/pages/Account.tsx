@@ -37,6 +37,7 @@ import { PremiumToggle } from "@/components/PremiumToggle";
 import { PremiumAlert } from "@/components/PremiumAlert";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
+import { PremiumLoader } from "@/components/PremiumLoader";
 
 interface Profile {
     full_name: string | null;
@@ -233,16 +234,7 @@ const Account = () => {
         setIsAddingAddress(true);
     };
 
-    const PremiumLoader = () => (
-        <div className="flex flex-col items-center justify-center py-32 space-y-6">
-            <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
-                <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
-                Retrieving Identity...
-            </span>
-        </div>
-    );
+
 
     if (loading) {
         return (

@@ -18,8 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Eye, Truck, Printer } from 'lucide-react';
+import { Eye, Truck, Printer, ChevronDown } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { calculateOrderTotals } from '@/lib/calculations';
 
 interface Order {
   id: string;
@@ -341,7 +348,7 @@ const AdminOrders = () => {
 
         {/* Order Details Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[2rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl">
+          <DialogContent className="max-w-3xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
             <div className="p-6 sm:p-12">
               <DialogHeader className="mb-8 sm:mb-12 border-b border-accent/5 pb-6 sm:pb-8 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
@@ -421,7 +428,8 @@ const AdminOrders = () => {
                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/30 mb-6 sm:mb-8 flex items-center gap-3">
                       <span className="w-8 h-px bg-accent/20" /> Artifact Manifest
                     </h4>
-                    <div className="space-y-6 sm:space-y-8 mb-8 sm:mb-10">
+                    {/* Scrollable Items list */}
+                    <div className="space-y-6 sm:space-y-8 mb-8 sm:mb-10 max-h-[200px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-accent/20 scrollbar-track-transparent">
                       {orderItems.map((item) => (
                         <div key={item.id} className="flex items-center gap-4 group">
                           <div className="w-12 sm:w-16 h-16 sm:h-20 bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm border border-accent/5 flex-shrink-0">
@@ -449,43 +457,59 @@ const AdminOrders = () => {
                       ))}
                     </div>
 
-                    <div className="pt-8 mt-4 border-t border-accent/10">
-                      <div className="space-y-5 mb-10 bg-accent/5 p-6 rounded-[2rem]">
+                    <div className="pt-6 mt-4 border-t border-accent/10">
+                      <div className="space-y-3 mb-6 bg-accent/5 p-4 rounded-[1.5rem]">
                         {(() => {
-                          const calculatedGross = orderItems.length > 0
-                            ? orderItems.reduce((sum, item) => sum + Number(item.price), 0)
-                            : (Number(selectedOrder.total_amount) - Number(selectedOrder.shipping_fee || 0) + Number(selectedOrder.discount_amount || 0)) / 1.08;
+                          const items = orderItems.length > 0 ? orderItems : [];
+                          const shipping = Number(selectedOrder.shipping_fee || 0);
+                          const discount = Number(selectedOrder.discount_amount || 0);
 
-                          const calculatedTax = calculatedGross * 0.08;
-                          const calculatedShipping = Number(selectedOrder.shipping_fee || 0);
+                          let gross = items.length > 0
+                            ? items.reduce((sum, item) => sum + Number(item.price), 0)
+                            : 0;
+
+                          if (gross === 0 && Number(selectedOrder.total_amount) > 0) {
+                            gross = (Number(selectedOrder.total_amount) - shipping + discount) / 1.08;
+                          }
+
+                          const { tax, total, gross: calculatedGross } = calculateOrderTotals(gross, shipping, discount);
 
                           return (
-                            <>
-                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
-                                <span>Gross Value</span>
-                                <span>${calculatedGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-accent italic">
-                                <span>Logistics ({selectedOrder.shipping_method_name || 'Standard'})</span>
-                                <span>${calculatedShipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-accent">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Incentive {selectedOrder.coupons?.code ? `(${selectedOrder.coupons.code})` : 'Applied'}</span>
-                                <span>-${Number(selectedOrder.discount_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
-                                <span>Fiscal Duty (8%)</span>
-                                <span>${calculatedTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                              </div>
-                            </>
+                            <Accordion type="single" collapsible className="w-full border-none">
+                              <AccordionItem value="breakdown" className="border-none">
+                                <AccordionTrigger className="py-0 hover:no-underline [&>svg]:w-3 [&>svg]:h-3 [&>svg]:text-primary/30">
+                                  <div className="flex justify-between items-center w-full pr-4">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">View Breakdown</span>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-4 pb-0 space-y-3">
+                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
+                                    <span>Gross Value</span>
+                                    <span>${calculatedGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
+                                    <span>Logistics ({selectedOrder.shipping_method_name || 'Standard'})</span>
+                                    <span>${shipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
+                                    <span>Incentive {selectedOrder.coupons?.code ? `(${selectedOrder.coupons.code})` : 'Applied'}</span>
+                                    <span>-${discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
+                                    <span>Fiscal Duty (8%)</span>
+                                    <span>${tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
                           );
                         })()}
                       </div>
 
                       <div className="flex items-end justify-between px-2">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.5em] text-primary/30 mb-2 italic">Final Settlement</p>
-                          <p className="text-4xl font-black tracking-tighter text-primary">
+                          <p className="text-[8px] font-black uppercase tracking-[0.5em] text-primary/30 mb-1 italic">Final Settlement</p>
+                          <p className="text-3xl font-black tracking-tighter text-primary">
                             ${Number(selectedOrder.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
@@ -669,12 +693,19 @@ const AdminOrders = () => {
           <div className="flex justify-end mb-24 relative z-10">
             <div className="w-72 space-y-4">
               {(() => {
-                const calculatedGross = orderItems.length > 0
-                  ? orderItems.reduce((sum, item) => sum + Number(item.price), 0)
-                  : (Number(invoiceOrder.total_amount) - Number(invoiceOrder.shipping_fee || 0) + Number(invoiceOrder.discount_amount || 0)) / 1.08;
+                const items = orderItems.length > 0 ? orderItems : [];
+                const shipping = Number(invoiceOrder.shipping_fee || 0);
+                const discount = Number(invoiceOrder.discount_amount || 0);
 
-                const calculatedTax = calculatedGross * 0.08;
-                const calculatedShipping = Number(invoiceOrder.shipping_fee || 0);
+                let gross = items.length > 0
+                  ? items.reduce((sum, item) => sum + Number(item.price), 0)
+                  : 0;
+
+                if (gross === 0 && Number(invoiceOrder.total_amount) > 0) {
+                  gross = (Number(invoiceOrder.total_amount) - shipping + discount) / 1.08;
+                }
+
+                const { tax, total, gross: calculatedGross } = calculateOrderTotals(gross, shipping, discount);
 
                 return (
                   <>
@@ -684,15 +715,15 @@ const AdminOrders = () => {
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
                       <span>Logistics ({invoiceOrder.shipping_method_name || 'Standard'})</span>
-                      <span className="text-primary">${calculatedShipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-primary">${shipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-accent">
                       <span>Incentive {invoiceOrder.coupons?.code ? `(${invoiceOrder.coupons.code})` : 'Applied'}</span>
-                      <span>-${Number(invoiceOrder.discount_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>-${discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40 pb-4 border-b border-accent/10">
                       <span>Fiscal Duty (8%)</span>
-                      <span className="text-primary">${calculatedTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-primary">${tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-baseline pt-2">
                       <span className="text-[12px] font-black uppercase tracking-[0.4em] text-accent">Net Total</span>

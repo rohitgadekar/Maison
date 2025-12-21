@@ -112,22 +112,22 @@ export function Header() {
                     <DropdownMenuSeparator className="bg-accent/5" />
                     <div className="py-2">
                       {isAdmin ? (
-                        <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                          <Link to="/admin">
-                            <LayoutDashboard className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Admin Terminal</span>
+                        <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 focus:text-accent cursor-pointer flex items-center mb-1 group">
+                          <Link to="/admin" className="flex items-center w-full">
+                            <LayoutDashboard className="mr-3 h-4 w-4 text-accent" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-accent">Admin Terminal</span>
                           </Link>
                         </DropdownMenuItem>
                       ) : (
                         <>
-                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                            <Link to="/account">
+                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 focus:text-primary cursor-pointer flex items-center mb-1 group">
+                            <Link to="/account" className="flex items-center w-full">
                               <UserCircle className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
                               <span className="text-[10px] font-black uppercase tracking-widest text-primary">Identity Settings</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 cursor-pointer flex items-center mb-1 group">
-                            <Link to="/orders">
+                          <DropdownMenuItem asChild className="rounded-xl px-4 py-3 focus:bg-accent/5 focus:text-primary cursor-pointer flex items-center mb-1 group">
+                            <Link to="/orders" className="flex items-center w-full">
                               <ClipboardList className="mr-3 h-4 w-4 text-primary/30 group-hover:text-accent transition-colors" />
                               <span className="text-[10px] font-black uppercase tracking-widest text-primary">Archival History</span>
                             </Link>
@@ -135,7 +135,7 @@ export function Header() {
                         </>
                       )}
                       <DropdownMenuSeparator className="bg-accent/5 my-2" />
-                      <DropdownMenuItem onClick={handleLogout} className="rounded-xl px-4 py-3 focus:bg-rose-50 text-rose-500 cursor-pointer flex items-center mt-1 group">
+                      <DropdownMenuItem onClick={handleLogout} className="rounded-xl px-4 py-3 focus:bg-rose-50 focus:text-rose-500 text-rose-500 cursor-pointer flex items-center mt-1 group">
                         <LogOut className="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Depart Session</span>
                       </DropdownMenuItem>

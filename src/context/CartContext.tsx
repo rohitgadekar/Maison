@@ -10,6 +10,7 @@ interface CartItem {
   image: string;
   size?: string;
   quantity: number;
+  inventory: number;
 }
 
 interface ProductInput {
@@ -21,6 +22,7 @@ interface ProductInput {
   category: string;
   image: string;
   size?: string;
+  inventory: number;
 }
 
 interface CartContextType {
@@ -45,6 +47,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
+        if (existingItem.quantity >= existingItem.inventory) {
+          return prevItems;
+        }
         return prevItems.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -65,11 +70,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId);
       return;
     }
-    setItems((prevItems) =>
-      prevItems.map((item) =>
+
+    setItems((prevItems) => {
+      const item = prevItems.find(i => i.id === productId);
+      if (item && quantity > item.inventory) {
+        return prevItems;
+      }
+      return prevItems.map((item) =>
         item.id === productId ? { ...item, quantity } : item
-      )
-    );
+      );
+    });
   };
 
   const clearCart = () => {

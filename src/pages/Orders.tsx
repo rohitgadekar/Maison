@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Package, ArrowLeft, Truck, ExternalLink, Calendar, MapPin, CreditCard, XCircle, MoreVertical, Printer } from 'lucide-react';
+import { PremiumLoader } from '@/components/PremiumLoader';
 import { Link } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SEO } from '@/components/SEO';
 import { Price } from '@/components/Price';
+import { calculateOrderTotals } from '@/lib/calculations';
 
 interface Order {
   id: string;
@@ -227,16 +229,7 @@ const Orders = () => {
     }, 100);
   };
 
-  const PremiumLoader = () => (
-    <div className="flex flex-col items-center justify-center py-32 space-y-6">
-      <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
-        <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
-        Accessing Archive...
-      </span>
-    </div>
-  );
+
 
   const invoiceOrder = orders.find(o => o.id === printingOrder);
   const invoiceItems = printingOrder ? orderItems[printingOrder] || [] : [];
@@ -376,42 +369,47 @@ const Orders = () => {
                             <span className="w-10 h-px bg-accent/20" /> Artifact Manifest
                           </h4>
                           <div className="space-y-8">
-                            {orderItems[order.id]?.map((item) => (
-                              <div key={item.id} className="flex gap-6 sm:gap-10 group/item">
-                                <div className="relative w-24 h-32 sm:w-28 sm:h-36 flex-shrink-0">
-                                  <div className="w-full h-full bg-accent/5 rounded-[1.5rem] border border-accent/5 overflow-hidden shadow-sm">
-                                    <img
-                                      src={
-                                        (Array.isArray(item.products) ? item.products[0]?.image_url : item.products?.image_url) ||
-                                        (Array.isArray(item.products) ? item.products[0]?.images?.[0] : item.products?.images?.[0]) ||
-                                        'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'
-                                      }
-                                      alt={Array.isArray(item.products) ? item.products[0]?.name : item.products?.name}
-                                      className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-1000"
-                                    />
+                            {orderItems[order.id]?.map((item) => {
+                              const product = Array.isArray(item.products) ? item.products[0] : item.products;
+                              if (!product) return null;
+
+                              return (
+                                <div key={item.id} className="flex gap-6 sm:gap-10 group/item">
+                                  <div className="relative w-24 h-32 sm:w-28 sm:h-36 flex-shrink-0">
+                                    <div className="w-full h-full bg-accent/5 rounded-[1.5rem] border border-accent/5 overflow-hidden shadow-sm">
+                                      <img
+                                        src={
+                                          product.image_url ||
+                                          product.images?.[0] ||
+                                          'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'
+                                        }
+                                        alt={product.name}
+                                        className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-1000"
+                                      />
+                                    </div>
+                                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-black/80 backdrop-blur-sm text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-2xl z-20 border border-white/10">
+                                      {item.quantity}
+                                    </div>
                                   </div>
-                                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-black/80 backdrop-blur-sm text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-2xl z-20 border border-white/10">
-                                    {item.quantity}
+                                  <div className="flex-1 flex flex-col justify-center min-w-0">
+                                    <h5 className="font-heading font-black text-xl sm:text-2xl leading-none mb-3 tracking-tighter truncate text-primary/90">
+                                      {product.name}
+                                    </h5>
+                                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                                      {item.size && (
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-accent italic">Dim: {item.size}</span>
+                                      )}
+                                      <span className="w-1 h-1 rounded-full bg-accent/20" />
+                                      <span className="text-[9px] font-black uppercase tracking-widest text-primary/30 font-medium">Registry Value</span>
+                                      <Price amount={item.price / item.quantity} className="text-sm font-bold tracking-tight text-primary/40" />
+                                    </div>
+                                  </div>
+                                  <div className="text-right flex flex-col justify-center">
+                                    <Price amount={Number(item.price)} className="font-sans font-black text-xl sm:text-2xl tracking-tighter text-primary" />
                                   </div>
                                 </div>
-                                <div className="flex-1 flex flex-col justify-center min-w-0">
-                                  <h5 className="font-heading font-black text-xl sm:text-2xl leading-none mb-3 tracking-tighter truncate text-primary/90">
-                                    {Array.isArray(item.products) ? item.products[0]?.name : item.products?.name}
-                                  </h5>
-                                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-                                    {item.size && (
-                                      <span className="text-[9px] font-black uppercase tracking-widest text-accent italic">Dim: {item.size}</span>
-                                    )}
-                                    <span className="w-1 h-1 rounded-full bg-accent/20" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/30 font-medium">Registry Value</span>
-                                    <Price amount={item.price / item.quantity} className="text-sm font-bold tracking-tight text-primary/40" />
-                                  </div>
-                                </div>
-                                <div className="text-right flex flex-col justify-center">
-                                  <Price amount={Number(item.price)} className="font-sans font-black text-xl sm:text-2xl tracking-tighter text-primary" />
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
 
                           {/* Tracking Info if available */}
@@ -491,12 +489,18 @@ const Orders = () => {
                             <div className="space-y-5 relative z-10">
                               {(() => {
                                 const items = orderItems[order.id] || [];
-                                const calculatedGross = items.length > 0
-                                  ? items.reduce((sum, item) => sum + Number(item.price), 0)
-                                  : (Number(order.total_amount) - Number(order.shipping_fee || 0) + Number(order.discount_amount || 0)) / 1.08;
+                                const shipping = Number(order.shipping_fee || 0);
+                                const discount = Number(order.discount_amount || 0);
 
-                                const calculatedTax = calculatedGross * 0.08;
-                                const calculatedShipping = Number(order.shipping_fee || 0);
+                                let gross = items.length > 0
+                                  ? items.reduce((sum, item) => sum + Number(item.price), 0)
+                                  : 0;
+
+                                if (gross === 0 && Number(order.total_amount) > 0) {
+                                  gross = (Number(order.total_amount) - shipping + discount) / 1.08;
+                                }
+
+                                const { tax, total, gross: calculatedGross } = calculateOrderTotals(gross, shipping, discount);
 
                                 return (
                                   <>
@@ -506,7 +510,7 @@ const Orders = () => {
                                     </div>
                                     <div className="flex justify-between items-center">
                                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{order.shipping_method_name || 'Standard Logistics'}</span>
-                                      <Price amount={calculatedShipping} className="text-base font-bold text-white/90" />
+                                      <Price amount={shipping} className="text-base font-bold text-white/90" />
                                     </div>
                                     <div className="flex justify-between items-center text-accent">
                                       <span className="text-[10px] font-black uppercase tracking-[0.3em]">Incentive {order.coupons?.code ? `(${order.coupons.code})` : 'Applied'}</span>
@@ -514,7 +518,7 @@ const Orders = () => {
                                     </div>
                                     <div className="flex justify-between items-center">
                                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Administrative (8%)</span>
-                                      <Price amount={calculatedTax} className="text-base font-bold text-white/90" />
+                                      <Price amount={tax} className="text-base font-bold text-white/90" />
                                     </div>
                                     <div className="py-4">
                                       <div className="w-full h-px bg-white/5" />
@@ -531,7 +535,7 @@ const Orders = () => {
                                   </>
                                 );
                               })()}
-                            </div>
+                            </div >
                           </div>
                         </div>
                       </div>
@@ -631,32 +635,37 @@ const Orders = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-accent/5">
-                {invoiceItems.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-8">
-                      <div className="w-12 h-16 bg-white rounded border border-accent/5 overflow-hidden">
-                        <img
-                          src={
-                            (Array.isArray(item.products) ? item.products[0]?.image_url : item.products?.image_url) ||
-                            (Array.isArray(item.products) ? item.products[0]?.images?.[0] : item.products?.images?.[0]) ||
-                            'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'
-                          }
-                          alt={Array.isArray(item.products) ? item.products[0]?.name : item.products?.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </td>
-                    <td className="py-8 px-6 text-left">
-                      <p className="font-heading text-lg font-bold tracking-tight text-primary leading-tight">{Array.isArray(item.products) ? item.products[0]?.name : item.products?.name}</p>
-                      <p className="text-[8px] text-primary/30 mt-2 font-black uppercase tracking-widest">Entry UID: {item.id.slice(0, 8).toUpperCase()}</p>
-                    </td>
-                    <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.size || "STD"}</td>
-                    <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.quantity}</td>
-                    <td className="text-right py-8 font-sans text-lg font-bold text-primary">
-                      <Price amount={Number(item.price)} />
-                    </td>
-                  </tr>
-                ))}
+                {invoiceItems.map((item) => {
+                  const product = Array.isArray(item.products) ? item.products[0] : item.products;
+                  if (!product) return null;
+
+                  return (
+                    <tr key={item.id}>
+                      <td className="py-8">
+                        <div className="w-12 h-16 bg-white rounded border border-accent/5 overflow-hidden">
+                          <img
+                            src={
+                              product.image_url ||
+                              product.images?.[0] ||
+                              'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop'
+                            }
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-8 px-6 text-left">
+                        <p className="font-heading text-lg font-bold tracking-tight text-primary leading-tight">{product.name}</p>
+                        <p className="text-[8px] text-primary/30 mt-2 font-black uppercase tracking-widest">Entry UID: {item.id.slice(0, 8).toUpperCase()}</p>
+                      </td>
+                      <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.size || "STD"}</td>
+                      <td className="text-center py-8 text-[10px] font-black uppercase tracking-widest text-primary/60">{item.quantity}</td>
+                      <td className="text-right py-8 font-sans text-lg font-bold text-primary">
+                        <Price amount={Number(item.price)} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -664,12 +673,18 @@ const Orders = () => {
           <div className="flex justify-end mb-24 relative z-10">
             <div className="w-72 space-y-4">
               {(() => {
-                const calculatedGross = invoiceItems.length > 0
-                  ? invoiceItems.reduce((sum, item) => sum + Number(item.price), 0)
-                  : (Number(invoiceOrder.total_amount) - Number(invoiceOrder.shipping_fee || 0) + Number(invoiceOrder.discount_amount || 0)) / 1.08;
+                const shipping = Number(invoiceOrder.shipping_fee || 0);
+                const discount = Number(invoiceOrder.discount_amount || 0);
 
-                const calculatedTax = calculatedGross * 0.08;
-                const calculatedShipping = Number(invoiceOrder.shipping_fee || 0);
+                let gross = invoiceItems.length > 0
+                  ? invoiceItems.reduce((sum, item) => sum + Number(item.price), 0)
+                  : 0;
+
+                if (gross === 0 && Number(invoiceOrder.total_amount) > 0) {
+                  gross = (Number(invoiceOrder.total_amount) - shipping + discount) / 1.08;
+                }
+
+                const { tax, total, gross: calculatedGross } = calculateOrderTotals(gross, shipping, discount);
 
                 return (
                   <>
@@ -679,7 +694,7 @@ const Orders = () => {
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40">
                       <span>Logistics ({invoiceOrder.shipping_method_name || 'Standard'})</span>
-                      <Price amount={calculatedShipping} className="text-primary" />
+                      <Price amount={shipping} className="text-primary" />
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-accent">
                       <span>Incentive {invoiceOrder.coupons?.code ? `(${invoiceOrder.coupons.code})` : 'Applied'}</span>
@@ -687,7 +702,7 @@ const Orders = () => {
                     </div>
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary/40 pb-4 border-b border-accent/10">
                       <span>Fiscal Duty (8%)</span>
-                      <Price amount={calculatedTax} className="text-primary" />
+                      <Price amount={tax} className="text-primary" />
                     </div>
                     <div className="flex justify-between items-baseline pt-2">
                       <span className="text-[12px] font-black uppercase tracking-[0.4em] text-accent">Net Total</span>
@@ -696,7 +711,7 @@ const Orders = () => {
                   </>
                 );
               })()}
-            </div>
+            </div >
           </div>
 
           <footer className="mt-auto pt-16 border-t border-accent/10 flex justify-between items-end relative z-10">

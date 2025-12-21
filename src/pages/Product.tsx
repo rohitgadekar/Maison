@@ -12,6 +12,8 @@ import { SEO } from '@/components/SEO';
 import { useWishlist } from '@/context/WishlistContext';
 import { cn } from '@/lib/utils';
 import { Price } from '@/components/Price';
+import { SizeChart, SizeChartData } from '@/components/SizeChart';
+import { PremiumLoader } from '@/components/PremiumLoader';
 
 interface ProductData {
   id: string;
@@ -25,18 +27,17 @@ interface ProductData {
   inventory: number;
   is_active: boolean;
   tag?: string | null;
+  brand?: string | null;
+  size_chart?: string | null;
+  size_chart_data?: SizeChartData | null;
 }
 
-const PremiumLoader = () => (
-  <div className="flex flex-col items-center justify-center py-32 space-y-6">
-    <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
-      <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
-    </div>
-    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
-      Identifying Artifact...
-    </span>
-  </div>
-);
+const isVideo = (url: string | null) => {
+  if (!url) return false;
+  return url.match(/\.(mp4|webm|ogg|mov)$/i);
+};
+
+
 
 const Product = () => {
   const { id } = useParams();
@@ -69,6 +70,7 @@ const Product = () => {
       }
 
       setProduct(data);
+      setQuantity(data.inventory > 0 ? 1 : 0);
       if (data.sizes && data.sizes.length > 0) {
         setSelectedSize(data.sizes[0]);
       }
@@ -136,7 +138,8 @@ const Product = () => {
         description: product.description || '',
         category: product.category,
         image: images[0],
-        size: selectedSize
+        size: selectedSize,
+        inventory: product.inventory
       });
     }
 
@@ -185,12 +188,23 @@ const Product = () => {
               {/* Product Images */}
               <div className="space-y-6">
                 {/* Main Image */}
-                <div className="relative aspect-[3/4] bg-white rounded-[3rem] overflow-hidden group shadow-2xl">
-                  <img
-                    src={images[selectedImageIndex]}
-                    alt={product.name}
-                    className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-[2s]"
-                  />
+                <div className="relative aspect-[3/4] bg-white rounded-[3rem] overflow-hidden group shadow-2xl isolation-isolate">
+                  {isVideo(images[selectedImageIndex]) ? (
+                    <video
+                      src={images[selectedImageIndex]}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover mix-blend-multiply"
+                    />
+                  ) : (
+                    <img
+                      src={images[selectedImageIndex]}
+                      alt={product.name}
+                      className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-[2s]"
+                    />
+                  )}
 
                   {images.length > 1 && (
                     <>
@@ -219,8 +233,11 @@ const Product = () => {
 
                   {/* Image counter */}
                   {images.length > 1 && (
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-accent text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl">
-                      {selectedImageIndex + 1} / {images.length}
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 backdrop-blur-md bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl z-30 pointer-events-none border border-white/10">
+                      <span className="text-white mix-blend-difference flex items-center gap-1.5">
+                        <span className="opacity-50 text-[8px]">REGISTRY</span>
+                        {selectedImageIndex + 1} / {images.length}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -237,11 +254,26 @@ const Product = () => {
                           : 'border-transparent opacity-50 hover:opacity-100'
                           }`}
                       >
-                        <img
-                          src={image}
-                          alt={`${product.name} view ${index + 1}`}
-                          className="w-full h-full object-cover mix-blend-multiply"
-                        />
+                        {isVideo(image) ? (
+                          <div className="w-full h-full bg-accent/5 flex items-center justify-center relative">
+                            <div className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                              <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+                            </div>
+                            <video
+                              src={`${image}#t=0.001`}
+                              className="absolute inset-0 w-full h-full object-cover opacity-50"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                          </div>
+                        ) : (
+                          <img
+                            src={image}
+                            alt={`${product.name} view ${index + 1}`}
+                            className="w-full h-full object-cover mix-blend-multiply"
+                          />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -262,6 +294,10 @@ const Product = () => {
                     )}
                   </div>
 
+                  {product.brand && (
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-primary/40 mb-2">{product.brand}</p>
+                  )}
+
                   <h1 className="font-heading text-5xl sm:text-7xl font-bold mb-8 tracking-tighter leading-[0.9]">
                     {product.name}
                   </h1>
@@ -280,7 +316,10 @@ const Product = () => {
                   {/* Size Selection */}
                   {product.sizes && product.sizes.length > 0 && (
                     <div className="mb-12">
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-6">Proportional Fit</h3>
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30">Proportional Fit</h3>
+                        <SizeChart data={product.size_chart_data || product.size_chart} />
+                      </div>
                       <div className="flex flex-wrap gap-4">
                         {product.sizes.map((size) => (
                           <button
@@ -302,17 +341,19 @@ const Product = () => {
                   <div className="mb-12">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-6">Volume</h3>
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-full border border-accent/10 shadow-sm">
+                      <div className="flex items-center gap-4 bg-white px-2 py-2 rounded-full border border-accent/10 shadow-sm">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm"
+                          disabled={product.inventory === 0 || quantity <= 1}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-current disabled:cursor-not-allowed"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="text-xl font-black w-8 text-center">{quantity}</span>
                         <button
                           onClick={() => setQuantity(Math.min(product.inventory, quantity + 1))}
-                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm"
+                          disabled={product.inventory === 0 || quantity >= product.inventory}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-current disabled:cursor-not-allowed"
                         >
                           <Plus className="w-4 h-4" />
                         </button>

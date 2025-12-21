@@ -47,32 +47,47 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             }
 
             setLoading(true);
-            const { data, error } = await supabase
+
+            // Search Products
+            const { data: prodData } = await supabase
                 .from('products')
                 .select('*')
-                .ilike('name', `%${query}%`)
+                .or(`name.ilike.%${query}%,brand.ilike.%${query}%,sku.ilike.%${query}%`)
                 .eq('is_active', true)
                 .limit(6);
 
-            if (!error && data) {
-                const mapped = (data as any[]).map((item) => ({
+            // Search Collections
+            const { data: collData } = await supabase
+                .from('collections')
+                .select('*')
+                .ilike('name', `%${query}%`)
+                .eq('is_active', true)
+                .limit(3);
+
+            const combinedResults: any[] = [];
+
+            if (prodData) {
+                combinedResults.push(...(prodData as any[]).map(item => ({
+                    ...item,
+                    type: 'product',
+                    image: item.image_url || item.image,
+                })));
+            }
+
+            if (collData) {
+                combinedResults.push(...(collData as any[]).map(item => ({
                     id: item.id,
                     name: item.name,
-                    price: item.price,
+                    category: 'Collection',
                     description: item.description,
-                    category: item.category,
-                    image: item.image_url || item.image,
-                    badge: item.badge,
-                    image_url: item.image_url,
-                    images: item.images,
-                    inventory: item.inventory,
-                    is_active: item.is_active,
-                    sizes: item.sizes,
-                    tag: item.tag,
-                    created_at: item.created_at,
-                }));
-                setResults(mapped as Product[]);
+                    type: 'collection',
+                    slug: item.slug,
+                    price: null,
+                    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop', // Placeholder for collection
+                })));
             }
+
+            setResults(combinedResults.slice(0, 6));
             setLoading(false);
         };
 
@@ -127,7 +142,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                                 {results.map((product) => (
                                     <Link
                                         key={product.id}
-                                        to={`/product/${product.id}`}
+                                        to={product.type === 'collection' ? `/shop?registry=${product.slug}` : `/product/${product.id}`}
                                         onClick={onClose}
                                         className="group flex items-center gap-6 p-6 rounded-[2rem] bg-white border border-accent/5 hover:shadow-2xl hover:shadow-accent/5 transition-all duration-500"
                                     >
@@ -143,7 +158,9 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-1 italic">/{product.category}</p>
                                             <h4 className="font-heading text-xl font-bold tracking-tight truncate group-hover:text-accent transition-colors">{product.name}</h4>
-                                            <p className="text-lg font-black tracking-tighter text-primary/40 mt-1">${product.price}</p>
+                                            {product.price !== null && (
+                                                <p className="text-lg font-black tracking-tighter text-primary/40 mt-1">${product.price}</p>
+                                            )}
                                         </div>
                                         <ArrowRight className="w-5 h-5 text-primary/20 group-hover:text-accent group-hover:translate-x-2 transition-all" />
                                     </Link>
@@ -176,7 +193,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                     {/* Quick Tags */}
                     <div className="flex flex-wrap items-center gap-4 text-primary/40">
                         <span className="text-[10px] font-black uppercase tracking-widest mr-4 italic">Popular Registry Keywords:</span>
-                        {['Archival', 'Spring', 'Seance', 'Minimalist', 'Maison'].map(tag => (
+                        {['Fall 25', 'Gymshark', 'Nike', 'Adidas'].map(tag => (
                             <button
                                 key={tag}
                                 onClick={() => setQuery(tag)}

@@ -167,14 +167,13 @@ const AdminCustomers = () => {
                                                 </div>
                                             </td>
                                             <td className="px-10 py-8 text-center">
-                                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/5">
-                                                    <ShoppingBag className="w-4 h-4 text-primary/40" />
-                                                    <span className="text-lg font-black tracking-tighter text-primary">{customer.total_orders}</span>
+                                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/5 border border-accent/5">
+                                                    <ShoppingBag className="w-4 h-4 text-accent" />
+                                                    <span className="text-lg font-black tracking-tighter text-accent">{customer.total_orders}</span>
                                                 </div>
                                             </td>
                                             <td className="px-10 py-8 text-right">
                                                 <div className="inline-flex items-center gap-2">
-                                                    <DollarSign className="w-4 h-4 text-accent/40" />
                                                     <span className="text-2xl font-black tracking-tighter text-primary">
                                                         ${customer.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </span>

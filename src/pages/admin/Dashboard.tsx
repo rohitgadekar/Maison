@@ -38,9 +38,9 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
-      navigate('/auth', { state: { from: '/admin' } });
+      navigate('/auth', { replace: true, state: { from: location.pathname } });
     }
-  }, [user, authLoading, isAdmin, navigate]);
+  }, [user, authLoading, isAdmin, navigate, location]);
 
   useEffect(() => {
     const fetchStats = async () => {

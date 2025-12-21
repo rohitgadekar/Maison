@@ -24,7 +24,7 @@ export function FeaturedProducts({ products: passedProducts }: FeaturedProductsP
             </h2>
           </div>
           <Button asChild variant="ghost" className="self-start sm:self-auto">
-            <Link to="/shop" className="group">
+            <Link to="/shop?collection=New Arrivals" className="group">
               View All
               <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>

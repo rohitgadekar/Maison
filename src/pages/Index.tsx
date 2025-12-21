@@ -22,6 +22,8 @@ const Index = () => {
         .from('products')
         .select('*')
         .eq('is_active', true)
+        .ilike('tag', 'new')
+        .order('created_at', { ascending: false })
         .limit(4);
 
       if (productsError) {

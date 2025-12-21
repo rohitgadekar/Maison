@@ -162,6 +162,16 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Hide number spinner arrows */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+  }
+  input[type=number] {
+    -moz-appearance: textfield; 
+  }
 }
 
 @layer utilities {
@@ -306,6 +316,7 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
   to {
     opacity: 1;

@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { SizeChartBuilder, SizeChartData } from '@/components/admin/SizeChartBuilder';
+import { SizeChart } from '@/components/SizeChart';
 
 interface Product {
   id: string;
@@ -27,6 +29,9 @@ interface Product {
   inventory: number;
   is_active: boolean;
   tag?: string | null;
+  brand?: string | null;
+  size_chart?: string | null;
+  size_chart_data?: SizeChartData | null;
 }
 
 const AdminProducts = () => {
@@ -36,6 +41,8 @@ const AdminProducts = () => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [cloneSearch, setCloneSearch] = useState('');
+  const [isCloneVisible, setIsCloneVisible] = useState(false);
 
   // NEW STATE FOR OVERVIEW DIALOG
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
@@ -51,7 +58,10 @@ const AdminProducts = () => {
     category: '',
     sizes: 'S, M, L, XL',
     inventory: '0',
-    tag: ''
+    tag: '',
+    brand: '',
+    size_chart: '',
+    size_chart_data: null as SizeChartData | null
   });
 
   const fetchProducts = async () => {
@@ -99,7 +109,10 @@ const AdminProducts = () => {
       category: '',
       sizes: 'S, M, L, XL',
       inventory: '0',
-      tag: ''
+      tag: '',
+      brand: '',
+      size_chart: '',
+      size_chart_data: null
     });
     setEditingProduct(null);
   };
@@ -118,7 +131,10 @@ const AdminProducts = () => {
       category: product.category,
       sizes: product.sizes?.join(', ') || 'S, M, L, XL',
       inventory: product.inventory.toString(),
-      tag: product.tag || ''
+      tag: product.tag || '',
+      brand: product.brand || '',
+      size_chart: product.size_chart || '',
+      size_chart_data: product.size_chart_data || null
     });
     setIsDialogOpen(true);
   };
@@ -144,7 +160,10 @@ const AdminProducts = () => {
       sizes: sizesArray,
       inventory: parseInt(formData.inventory),
       is_active: true,
-      tag: formData.tag || null
+      tag: formData.tag || null,
+      brand: formData.brand || null,
+      size_chart: formData.size_chart || null,
+      size_chart_data: formData.size_chart_data || null
     };
 
     if (editingProduct) {
@@ -153,7 +172,7 @@ const AdminProducts = () => {
         .update(productData)
         .eq('id', editingProduct.id);
       if (error) {
-        toast.error('Failed to update product');
+        toast.error(`Failed to update product: ${error.message}`);
         return;
       }
       toast.success('Archive updated successfully');
@@ -162,7 +181,8 @@ const AdminProducts = () => {
         .from('products')
         .insert([productData]);
       if (error) {
-        toast.error('Failed to augment archive');
+        console.error('Insert error:', error);
+        toast.error(`Failed to augment archive: ${error.message}`);
         return;
       }
       toast.success('Artifact successfully added to archive');
@@ -198,6 +218,12 @@ const AdminProducts = () => {
     fetchProducts();
   };
 
+  // Helper to detect video format
+  const isVideo = (url: string | null) => {
+    if (!url) return false;
+    return /\.(mp4|webm|ogg|mov)$/i.test(url);
+  };
+
   const getProductImage = (product: Product): string => {
     if (product.images && product.images.length > 0) {
       return product.images[0];
@@ -229,7 +255,7 @@ const AdminProducts = () => {
               placeholder="Search by Code, Name, or Category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-16 bg-white border border-accent/5 rounded-2xl px-12 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all shadow-sm outline-none"
+              className="w-full h-16 bg-white border border-accent/5 rounded-2xl px-12 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-0 focus:border-accent shadow-sm"
             />
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/30 group-focus-within:text-accent transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -303,7 +329,7 @@ const AdminProducts = () => {
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1 h-12 rounded-2xl border-accent/10 hover:bg-accent/5 text-[9px] font-black uppercase tracking-widest gap-2"
+                  className="flex-1 h-12 rounded-2xl border-accent/10 hover:bg-accent/5 hover:text-accent text-[9px] font-black uppercase tracking-widest gap-2"
                   onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -338,8 +364,8 @@ const AdminProducts = () => {
 
       {/* YOUR ORIGINAL Add/Edit Dialog - UNCHANGED */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[3.5rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl">
-          <div className="p-6 sm:p-12">
+        <DialogContent className="max-w-3xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
+          <div className="max-h-[85vh] overflow-y-auto p-6 sm:p-12 scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20">
             <DialogHeader className="mb-10 text-center md:text-left">
               <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Archival Registry</span>
               <DialogTitle className="font-heading text-4xl font-bold tracking-tighter">
@@ -356,7 +382,7 @@ const AdminProducts = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                     placeholder="e.g. Silk Archival Blouse"
                   />
                 </div>
@@ -367,7 +393,7 @@ const AdminProducts = () => {
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     placeholder="e.g. MS-SH-001"
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent font-mono uppercase"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent font-mono uppercase"
                   />
                 </div>
                 <div className="space-y-3">
@@ -378,7 +404,7 @@ const AdminProducts = () => {
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     placeholder="e.g. Apparel"
                     required
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                   />
                 </div>
                 <div className="space-y-3">
@@ -388,20 +414,22 @@ const AdminProducts = () => {
                     value={formData.tag}
                     onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
                     placeholder="e.g. New, Bestseller, Archival"
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                   />
                 </div>
               </div>
               <div className="space-y-3">
                 <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest ml-1 text-primary/40">Archival Abstract</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                  className="rounded-3xl border-accent/10 bg-white shadow-sm focus:ring-accent p-6 resize-none"
-                  placeholder="Describe the material integrity and architectural build..."
-                />
+                <div className="rounded-2xl border border-accent/10 bg-white shadow-sm overflow-hidden focus-within:ring-0 focus-within:border-accent transition-all">
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                    className="border-0 shadow-none focus-visible:ring-0 p-6 resize-none scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20 h-full w-full"
+                    placeholder="Describe the material integrity and architectural build..."
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
@@ -414,7 +442,7 @@ const AdminProducts = () => {
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     required
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                   />
                 </div>
                 <div className="space-y-3">
@@ -426,7 +454,17 @@ const AdminProducts = () => {
                     value={formData.inventory}
                     onChange={(e) => setFormData({ ...formData, inventory: e.target.value })}
                     required
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="brand" className="text-[10px] font-black uppercase tracking-widest ml-1 text-primary/40">Atelier / Brand</Label>
+                  <Input
+                    id="brand"
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="e.g. Maison Margiela"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                   />
                 </div>
                 <div className="space-y-3">
@@ -435,9 +473,91 @@ const AdminProducts = () => {
                     id="sizes"
                     value={formData.sizes}
                     onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus:ring-accent"
+                    className="h-16 rounded-2xl border-accent/10 bg-white shadow-sm focus-visible:ring-0 focus-visible:border-accent"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between ml-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary/40">Size Protocol Builder</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCloneVisible(!isCloneVisible)}
+                    className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline decoration-accent underline-offset-4"
+                  >
+                    {isCloneVisible ? '[ Close Protocol ]' : '[ Clone Protocol ]'}
+                  </button>
+                </div>
+
+                {isCloneVisible && (
+                  <div className="p-8 bg-accent/5 rounded-[2.5rem] border border-accent/10 animate-in fade-in slide-in-from-top-4 duration-500 mb-6">
+                    <span className="text-accent text-[8px] font-black uppercase tracking-[0.4em] mb-4 block italic">Archival Data Transfer</span>
+                    <Input
+                      placeholder="Search by Designation or SKU to copy size chart..."
+                      value={cloneSearch}
+                      onChange={(e) => setCloneSearch(e.target.value)}
+                      className="h-14 mb-4 rounded-2xl border-accent/10 bg-white/50 text-xs focus-visible:ring-0 focus-visible:border-accent"
+                    />
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin">
+                      {products
+                        .filter(p =>
+                          cloneSearch.length >= 2 &&
+                          (p.name.toLowerCase().includes(cloneSearch.toLowerCase()) ||
+                            p.sku?.toLowerCase().includes(cloneSearch.toLowerCase()))
+                        )
+                        .map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                size_chart: p.size_chart || '',
+                                size_chart_data: p.size_chart_data || null
+                              });
+                              setIsCloneVisible(false);
+                              setCloneSearch('');
+                              toast.success(`Protocol cloned from ${p.name}`);
+                            }}
+                            className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm border border-accent/5 flex-shrink-0">
+                                {p.image_url ? (
+                                  isVideo(p.image_url) ? (
+                                    <video src={p.image_url} className="w-full h-full object-cover" muted />
+                                  ) : (
+                                    <img src={p.image_url} alt="" className="w-full h-full object-cover" />
+                                  )
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-accent/5">
+                                    <ImageIcon className="w-4 h-4 text-accent/20" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-primary">{p.name}</span>
+                                <span className="text-[8px] text-primary/40 uppercase tracking-widest">SKU: {p.sku || p.id.slice(0, 8)}</span>
+                              </div>
+                            </div>
+                            <Plus className="w-3 h-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        ))}
+                      {cloneSearch.length >= 2 && products.filter(p => p.name.toLowerCase().includes(cloneSearch.toLowerCase()) || p.sku?.toLowerCase().includes(cloneSearch.toLowerCase())).length === 0 && (
+                        <p className="text-[9px] text-primary/40 italic p-4">No matching protocols found.</p>
+                      )}
+                      {cloneSearch.length < 2 && (
+                        <p className="text-[9px] text-primary/40 italic p-4 text-center">Inject 2+ characters to query the archive...</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <SizeChartBuilder
+                  initialData={formData.size_chart_data}
+                  onChange={(data) => setFormData({ ...formData, size_chart_data: data })}
+                />
               </div>
               {/* Multiple Images */}
               <div className="space-y-6">
@@ -450,14 +570,25 @@ const AdminProducts = () => {
                     <div key={index} className="flex gap-4 items-center group">
                       <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white shadow-sm border border-accent/5 flex-shrink-0 flex items-center justify-center p-1">
                         {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={`Visual ${index + 1}`}
-                            className="w-full h-full object-cover rounded-xl"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.opacity = '0.3';
-                            }}
-                          />
+                          isVideo(imageUrl) ? (
+                            <video
+                              src={imageUrl}
+                              className="w-full h-full object-cover rounded-xl"
+                              muted
+                              loop
+                              playsInline
+                            // No controls for thumbnail
+                            />
+                          ) : (
+                            <img
+                              src={imageUrl}
+                              alt={`Visual ${index + 1}`}
+                              className="w-full h-full object-cover rounded-xl"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.opacity = '0.3';
+                              }}
+                            />
+                          )
                         ) : (
                           <ImageIcon className="w-5 h-5 text-accent/20" />
                         )}
@@ -467,7 +598,7 @@ const AdminProducts = () => {
                           value={imageUrl}
                           onChange={(e) => handleImageChange(index, e.target.value)}
                           placeholder={index === 0 ? "Main Perspective URL (Required)" : `Perspective ${index + 1} (Optional)`}
-                          className="h-14 rounded-2xl border-accent/5 bg-white/50 focus:bg-white transition-all text-xs"
+                          className="h-14 rounded-2xl border-accent/5 bg-white/50 focus:bg-white transition-all text-xs focus-visible:ring-0 focus-visible:border-accent"
                         />
                       </div>
                       {imageUrl && (
@@ -505,9 +636,9 @@ const AdminProducts = () => {
 
       {/* NEW: Product Overview Dialog - ADDED ONLY THIS PART */}
       <Dialog open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[2rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl">
+        <DialogContent className="max-w-4xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
           {selectedProduct && (
-            <div className="p-8 sm:p-12">
+            <div className="max-h-[85vh] overflow-y-auto p-8 sm:p-12 scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20">
               <DialogHeader className="mb-10 text-center md:text-left">
                 <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Artifact Overview</span>
                 <DialogTitle className="font-heading text-4xl font-bold tracking-tighter">
@@ -523,18 +654,39 @@ const AdminProducts = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                   <div className="md:col-span-2">
                     <div className="aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-xl border border-accent/10">
-                      <img
-                        src={selectedProduct.images[0]}
-                        alt={selectedProduct.name}
-                        className="w-full h-full object-cover"
-                      />
+                      {isVideo(selectedProduct.images[0]) ? (
+                        <video
+                          src={selectedProduct.images[0]}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          src={selectedProduct.images[0]}
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   </div>
                   {selectedProduct.images.length > 1 && (
                     <div className="grid grid-cols-2 gap-4">
                       {selectedProduct.images.slice(1).map((img, idx) => (
                         <div key={idx} className="aspect-square rounded-2xl overflow-hidden shadow-md border border-accent/5">
-                          <img src={img} alt={`Perspective ${idx + 2}`} className="w-full h-full object-cover" />
+                          {isVideo(img) ? (
+                            <video
+                              src={img}
+                              className="w-full h-full object-cover"
+                              muted
+                              loop
+                              playsInline
+                            />
+                          ) : (
+                            <img src={img} alt={`Perspective ${idx + 2}`} className="w-full h-full object-cover" />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -562,7 +714,10 @@ const AdminProducts = () => {
 
               {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
                 <div className="mb-10">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-4">Available Dimensions</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Available Dimensions</p>
+                    <SizeChart data={selectedProduct.size_chart_data || selectedProduct.size_chart} />
+                  </div>
                   <div className="flex flex-wrap gap-3">
                     {selectedProduct.sizes.map((size) => (
                       <span key={size} className="bg-accent/10 px-6 py-3 rounded-full text-sm font-black uppercase tracking-wider">

@@ -8,19 +8,11 @@ import type { Product } from "@/data/products";
 import { useSearchParams } from 'react-router-dom';
 import { SEO } from '@/components/SEO';
 import { cn } from "@/lib/utils";
+import { PremiumLoader } from "@/components/PremiumLoader";
 
 // Categories will be derived dynamically
 
-const PremiumLoader = () => (
-  <div className="flex flex-col items-center justify-center py-32 space-y-6">
-    <div className="relative w-48 h-[1px] bg-accent/10 overflow-hidden">
-      <div className="absolute inset-y-0 left-0 w-1/2 bg-accent animate-loading-bar" />
-    </div>
-    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-accent/40 italic animate-pulse">
-      Curation in progress...
-    </span>
-  </div>
-);
+
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +26,9 @@ const Shop = () => {
   const [registryProductIds, setRegistryProductIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('featured');
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 12;
 
   useEffect(() => {
     if (categoryParam) {
@@ -69,6 +64,8 @@ const Shop = () => {
           inventory: item.inventory,
           is_active: item.is_active,
           sizes: item.sizes,
+          sku: item.sku,
+          brand: item.brand,
           tag: item.tag,
           created_at: item.created_at,
         }));
@@ -168,11 +165,38 @@ const Shop = () => {
       return matchesCategory && registryProductIds.includes(p.id);
     }
     if (searchParam) {
-      return matchesCategory && p.name.toLowerCase().includes(searchParam.toLowerCase());
+      const q = searchParam.toLowerCase();
+      return matchesCategory && (
+        p.name.toLowerCase().includes(q) ||
+        (p.brand && p.brand.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q))
+      );
     }
 
     return matchesCategory;
   });
+
+  // Pagination Logic
+  const totalProducts = filteredProducts.length;
+  const totalPages = Math.ceil(totalProducts / productsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * productsPerPage,
+    currentPage * productsPerPage
+  );
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 8);
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
@@ -183,7 +207,7 @@ const Shop = () => {
       <main className="flex-1 pt-32 sm:pt-40 pb-24">
         {loading ? (
           <div className="container mx-auto px-4 lg:px-8">
-            <PremiumLoader  />
+            <PremiumLoader />
           </div>
         ) : (
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in">
@@ -266,7 +290,7 @@ const Shop = () => {
 
             {/* Products Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-16">
-              {filteredProducts.map((product, index) => (
+              {paginatedProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -274,6 +298,48 @@ const Shop = () => {
                 />
               ))}
             </div>
+
+            {/* Luxury Pagination / Discovery Bar */}
+            {totalProducts > productsPerPage && (
+              <div className="mt-32 flex flex-col items-center gap-12 pt-20 border-t border-accent/10">
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/20 italic">Segment:</span>
+                  <div className="flex items-center gap-3">
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => goToPage(i + 1)}
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-black transition-all duration-500 border",
+                          currentPage === i + 1
+                            ? "bg-primary text-white border-primary shadow-xl scale-110"
+                            : "bg-white text-primary/40 border-accent/5 hover:border-accent/20 hover:text-accent"
+                        )}
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-6">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/30">
+                    Exhibiting {Math.min(currentPage * productsPerPage, totalProducts)} of {totalProducts} Artifacts
+                  </p>
+
+                  {currentPage < totalPages && (
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      className="group h-16 px-12 bg-white border border-accent/10 rounded-full flex items-center gap-6 hover:bg-black hover:text-white transition-all duration-700 shadow-sm"
+                    >
+                      <span className="text-[9px] font-black uppercase tracking-[0.4em]">Load Next Segment</span>
+                      <div className="w-8 h-px bg-accent/30 group-hover:w-12 group-hover:bg-accent transition-all duration-700" />
+                      <span className="text-accent group-hover:text-white transition-colors">{String(currentPage + 1).padStart(2, '0')}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {filteredProducts.length === 0 && (
               <div className="text-center py-32 bg-white/50 rounded-[3rem] border border-dashed border-accent/20">

@@ -247,7 +247,7 @@ const AdminSettings = () => {
                         </div>
 
                         {!allowSignups && (
-                            <div className="flex items-start gap-4 p-6 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
+                            <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-rose-50/[0.5] text-rose-500 border border-rose-100">
                                 <ShieldAlert className="w-5 h-5 shrink-0" />
                                 <p className="text-xs font-bold leading-relaxed">
                                     Archive Registration Locked. New members can currently only be invited through the administrative terminal.

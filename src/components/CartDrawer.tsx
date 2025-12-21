@@ -4,10 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Price } from './Price';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function CartDrawer() {
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const handleCheckout = () => {
     setIsCartOpen(false);
@@ -16,7 +19,15 @@ export function CartDrawer() {
 
   return (
     <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col bg-[#FFFAF5] border-l border-accent/10 p-0">
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={cn(
+          "flex flex-col bg-[#FFFAF5] p-0",
+          isMobile
+            ? "h-[100dvh] border-none"
+            : "w-full sm:max-w-md h-full border-l border-accent/10"
+        )}
+      >
         <SheetHeader className="p-8 border-b border-accent/5 bg-white">
           <SheetTitle className="font-heading text-3xl font-bold tracking-tight">Your <span className="italic font-light text-accent">Archive</span></SheetTitle>
         </SheetHeader>
@@ -65,7 +76,7 @@ export function CartDrawer() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-accent/10 shadow-sm">
+                      <div className="flex items-center gap-3 bg-white px-1 py-1 rounded-full border border-accent/10 shadow-sm">
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
@@ -77,14 +88,15 @@ export function CartDrawer() {
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-colors"
+                          disabled={item.quantity >= item.inventory}
+                          className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-accent hover:text-white transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:cursor-not-allowed disabled:hover:text-current"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                        className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
