@@ -1,1 +1,11 @@
 project_id = "yyqkofloudfxgtzdnnrw"
+
+[functions.create-razorpay-order]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/create-razorpay-order/index.ts"
+
+[functions.handle-razorpay-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/handle-razorpay-webhook/index.ts"

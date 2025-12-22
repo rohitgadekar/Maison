@@ -27,10 +27,12 @@ import AdminCustomers from "./pages/admin/Customers";
 import AdminShipping from "./pages/admin/Shipping";
 import AdminSettings from "./pages/admin/Settings";
 import AdminCoupons from "./pages/admin/Coupons";
+import AdminPayments from "./pages/admin/Payments";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { SiteSettingsProvider } from "@/context/SiteSettingsContext";
 import { useState, useEffect } from 'react';
 import Offline from "./pages/Offline";
 
@@ -60,43 +62,46 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <CurrencyProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <BrowserRouter>
-                    <ScrollToTop />
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/shop" element={<Shop />} />
-                      <Route path="/product/:id" element={<Product />} />
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/shipping" element={<Shipping />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/terms" element={<Terms />} />
-                      <Route path="/account" element={<Account />} />
-                      <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/orders" element={<Orders />} />
-                      <Route path="/admin" element={<AdminDashboard />}>
-                        <Route path="products" element={<AdminProducts />} />
-                        <Route path="collections" element={<AdminCollections />} />
-                        <Route path="orders" element={<AdminOrders />} />
-                        <Route path="customers" element={<AdminCustomers />} />
-                        <Route path="shipping" element={<AdminShipping />} />
-                        <Route path="settings" element={<AdminSettings />} />
-                        <Route path="coupons" element={<AdminCoupons />} />
-                      </Route>
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </TooltipProvider>
-              </CurrencyProvider>
-            </WishlistProvider>
-          </CartProvider>
+          <SiteSettingsProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <CurrencyProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <BrowserRouter>
+                      <ScrollToTop />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/shop" element={<Shop />} />
+                        <Route path="/product/:id" element={<Product />} />
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/shipping" element={<Shipping />} />
+                        <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/terms" element={<Terms />} />
+                        <Route path="/account" element={<Account />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/orders" element={<Orders />} />
+                        <Route path="/admin" element={<AdminDashboard />}>
+                          <Route path="products" element={<AdminProducts />} />
+                          <Route path="collections" element={<AdminCollections />} />
+                          <Route path="orders" element={<AdminOrders />} />
+                          <Route path="customers" element={<AdminCustomers />} />
+                          <Route path="shipping" element={<AdminShipping />} />
+                          <Route path="settings" element={<AdminSettings />} />
+                          <Route path="coupons" element={<AdminCoupons />} />
+                          <Route path="payments" element={<AdminPayments />} />
+                        </Route>
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </TooltipProvider>
+                </CurrencyProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </SiteSettingsProvider>
         </AuthProvider>
       </HelmetProvider>
     </QueryClientProvider>

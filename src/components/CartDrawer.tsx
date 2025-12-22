@@ -1,18 +1,27 @@
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Price } from './Price';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSiteSettings } from '@/context/SiteSettingsContext';
 
 export function CartDrawer() {
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
+  const { allowCheckouts } = useSiteSettings();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   const handleCheckout = () => {
+    if (!allowCheckouts) {
+      toast.error('Acquisition Protocol Offline. The terminal is currently not accepting new orders.');
+      return;
+    }
     setIsCartOpen(false);
     navigate('/checkout');
   };
@@ -118,9 +127,13 @@ export function CartDrawer() {
               </div>
               <Button
                 onClick={handleCheckout}
-                className="w-full h-16 bg-primary text-white font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:bg-black transition-all rounded-full"
+                disabled={!allowCheckouts}
+                className={cn(
+                  "w-full h-16 text-white font-black uppercase tracking-[0.2em] text-xs shadow-xl transition-all rounded-full",
+                  allowCheckouts ? "bg-primary hover:bg-black" : "bg-primary/20 cursor-not-allowed"
+                )}
               >
-                Secure Acquisition
+                {allowCheckouts ? 'Secure Acquisition' : 'Acquisitions Restricted'}
               </Button>
               <p className="text-[9px] text-center text-primary/30 font-black uppercase tracking-widest">
                 Logistics & Protocol Tax calculated at session end.

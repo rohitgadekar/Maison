@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { PremiumToggle } from '@/components/PremiumToggle';
-import { UserPlus, Settings2, ShieldAlert, Check, Globe } from 'lucide-react';
+import { UserPlus, Settings2, ShieldAlert, Check, Globe, Truck, WifiOff } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -16,42 +16,17 @@ import {
 } from '@/components/ui/select';
 import { PremiumLoader } from '@/components/PremiumLoader';
 import { useCurrency, SUPPORTED_CURRENCIES } from '@/context/CurrencyContext';
+import { useSiteSettings } from '@/context/SiteSettingsContext';
 
 const AdminSettings = () => {
     const { storeCurrency, setStoreCurrency } = useCurrency();
-    const [loading, setLoading] = useState(true);
-    const [allowSignups, setAllowSignups] = useState(true);
+    const { allowSignups, allowCheckouts, enablePOD, enableOnlinePayments, loading: settingsLoading } = useSiteSettings();
     const [isSaving, setIsSaving] = useState(false);
     const [newUser, setNewUser] = useState({
         email: '',
         password: '',
         fullName: ''
     });
-
-
-
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const { data } = await supabase
-                    .from('site_settings' as any)
-                    .select('*')
-                    .eq('key', 'allow_signups')
-                    .maybeSingle();
-
-                if (data) {
-                    setAllowSignups((data as any).value === 'true');
-                }
-            } catch (err) {
-                console.error('Settings fetch error:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSettings();
-    }, []);
-
-
 
     const handleToggleSignups = async () => {
         if (isSaving) return;
@@ -68,8 +43,76 @@ const AdminSettings = () => {
                 }, { onConflict: 'key' });
 
             if (error) throw error;
-            setAllowSignups(nextValue);
             toast.success(`Sign-ups have been ${nextValue ? 'enabled' : 'disabled'}`);
+        } catch (err: any) {
+            toast.error('Failed to update settings: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleCheckouts = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        const nextValue = !allowCheckouts;
+
+        try {
+            const { error } = await supabase
+                .from('site_settings' as any)
+                .upsert({
+                    key: 'allow_checkouts',
+                    value: nextValue.toString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+            toast.success(`Checkouts have been ${nextValue ? 'enabled' : 'disabled'}`);
+        } catch (err: any) {
+            toast.error('Failed to update settings: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleTogglePOD = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        const nextValue = !enablePOD;
+
+        try {
+            const { error } = await supabase
+                .from('site_settings' as any)
+                .upsert({
+                    key: 'enable_pod',
+                    value: nextValue.toString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+            toast.success(`Pay on Delivery has been ${nextValue ? 'enabled' : 'disabled'}`);
+        } catch (err: any) {
+            toast.error('Failed to update settings: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleOnlinePayments = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        const nextValue = !enableOnlinePayments;
+
+        try {
+            const { error } = await supabase
+                .from('site_settings' as any)
+                .upsert({
+                    key: 'enable_online_payments',
+                    value: nextValue.toString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+            toast.success(`Online Payments have been ${nextValue ? 'enabled' : 'disabled'}`);
         } catch (err: any) {
             toast.error('Failed to update settings: ' + err.message);
         } finally {
@@ -81,7 +124,6 @@ const AdminSettings = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            // Create a secondary client that doesn't persist session to avoid logging out the admin
             const tempClient = createClient(
                 import.meta.env.VITE_SUPABASE_URL,
                 import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -111,7 +153,7 @@ const AdminSettings = () => {
         }
     };
 
-    if (loading) {
+    if (settingsLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <PremiumLoader message="Configuring Atelier Systems..." />
@@ -233,6 +275,134 @@ const AdminSettings = () => {
                                 <span className="text-accent font-bold">Note:</span> This setting establishes the foundational valuation for your archival collection. All global conversions will be calculated relative to this standard.
                             </p>
                         </div>
+                    </div>
+                </div>
+                {/* Checkout Toggle Card */}
+                <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-accent/5 transition-all duration-700 hover:shadow-2xl">
+                    <div className="flex items-center gap-6 mb-10">
+                        <div className="w-16 h-16 bg-accent/5 rounded-[2rem] flex items-center justify-center text-accent">
+                            <ShieldAlert className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h3 className="font-heading text-2xl font-bold tracking-tight uppercase">Registry Terminal</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">Checkout & Transaction Protocol</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between p-8 rounded-[2rem] bg-accent/5 border border-accent/10">
+                            <div>
+                                <p className="font-bold text-lg mb-1">Enable Checkouts</p>
+                                <p className="text-xs text-primary/50 italic font-medium">Control archival acquisitions</p>
+                            </div>
+                            <PremiumToggle
+                                checked={allowCheckouts}
+                                onCheckedChange={handleToggleCheckouts}
+                            />
+                        </div>
+
+                        {!allowCheckouts && (
+                            <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-rose-50/[0.5] text-rose-500 border border-rose-100">
+                                <ShieldAlert className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Acquisition Protocol Offline. Members can browse the archive but cannot formalize new acquisitions.
+                                </p>
+                            </div>
+                        )}
+                        {allowCheckouts && (
+                            <div className="flex items-start gap-4 p-6 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <Check className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Terminal Operating. All archival acquisitions are currently proceeding following standard protocols.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Delivery Protocol Toggle Card (POD) */}
+                <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-accent/5 transition-all duration-700 hover:shadow-2xl">
+                    <div className="flex items-center gap-6 mb-10">
+                        <div className="w-16 h-16 bg-accent/5 rounded-[2rem] flex items-center justify-center text-accent">
+                            <Truck className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h3 className="font-heading text-2xl font-bold tracking-tight uppercase">Delivery Protocol</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">Concierge Service Management</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between p-8 rounded-[2rem] bg-accent/5 border border-accent/10">
+                            <div>
+                                <p className="font-bold text-lg mb-1">Pay on Delivery</p>
+                                <p className="text-xs text-primary/50 italic font-medium">Enable concierge payment upon arrival</p>
+                            </div>
+                            <PremiumToggle
+                                checked={enablePOD}
+                                onCheckedChange={handleTogglePOD}
+                            />
+                        </div>
+
+                        {!enablePOD && (
+                            <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-amber-50/[0.5] text-amber-600 border border-amber-100">
+                                <ShieldAlert className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Standard Payment Protocol. Members must complete transactions via secure digital gateway.
+                                </p>
+                            </div>
+                        )}
+                        {enablePOD && (
+                            <div className="flex items-start gap-4 p-6 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <Check className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Concierge Delivery Active. Members may choose to settle acquisitions upon personal delivery.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Online Payments Toggle Card */}
+                <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-accent/5 transition-all duration-700 hover:shadow-2xl">
+                    <div className="flex items-center gap-6 mb-10">
+                        <div className="w-16 h-16 bg-accent/5 rounded-[2rem] flex items-center justify-center text-accent">
+                            <WifiOff className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h3 className="font-heading text-2xl font-bold tracking-tight uppercase">Digital Gateway</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">Online Payment Protocol</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between p-8 rounded-[2rem] bg-accent/5 border border-accent/10">
+                            <div>
+                                <p className="font-bold text-lg mb-1">Online Payments</p>
+                                <p className="text-xs text-primary/50 italic font-medium">Accept digital transactions via payment gateway</p>
+                            </div>
+                            <PremiumToggle
+                                checked={enableOnlinePayments}
+                                onCheckedChange={handleToggleOnlinePayments}
+                            />
+                        </div>
+
+                        {!enableOnlinePayments && (
+                            <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-rose-50/[0.5] text-rose-500 border border-rose-100">
+                                <ShieldAlert className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Gateway Offline. Digital transactions are currently suspended. Ensure alternative payment methods (like Concierge P.O.D) are active.
+                                </p>
+                            </div>
+                        )}
+                        {enableOnlinePayments && (
+                            <div className="flex items-start gap-4 p-6 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <Check className="w-5 h-5 shrink-0" />
+                                <p className="text-xs font-bold leading-relaxed">
+                                    Gateway Active. Secure digital transactions are fully operational.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

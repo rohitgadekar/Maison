@@ -37,9 +37,14 @@ interface InvoiceProps {
         email: string | null;
         phone: string | null;
     };
+    paymentInfo?: {
+        payment_method: string;
+        status: string;
+        transaction_id: string;
+    } | null;
 }
 
-export const Invoice = ({ order, items, customer }: InvoiceProps) => {
+export const Invoice = ({ order, items, customer, paymentInfo }: InvoiceProps) => {
     const shipping = Number(order.shipping_fee || 0);
     const discount = Number(order.discount_amount || 0);
 
@@ -117,6 +122,13 @@ export const Invoice = ({ order, items, customer }: InvoiceProps) => {
                         <div className="space-y-1">
                             <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Registry Status</p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-accent italic">{order.status}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Payment Protocol</p>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                {paymentInfo?.payment_method || 'Online Secure'}
+                                {paymentInfo?.status === 'pending' && <span className="text-amber-500 italic">(Pending)</span>}
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Valuation Reference</p>

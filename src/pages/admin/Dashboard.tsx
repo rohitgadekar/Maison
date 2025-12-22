@@ -14,7 +14,8 @@ import {
   X,
   Settings,
   Layers,
-  Ticket
+  Ticket,
+  CreditCard
 } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
 
@@ -23,6 +24,7 @@ interface Stats {
   totalOrders: number;
   pendingOrders: number;
   revenue: number;
+  pendingPOD: number;
 }
 
 const AdminDashboard = () => {
@@ -33,7 +35,8 @@ const AdminDashboard = () => {
     totalProducts: 0,
     totalOrders: 0,
     pendingOrders: 0,
-    revenue: 0
+    revenue: 0,
+    pendingPOD: 0
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -45,27 +48,64 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      // Fetch products count
+      // 1. Fetch Products
       const { count: productsCount } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch orders
+      // 2. Fetch Orders for counts
       const { data: orders } = await supabase
         .from('orders')
-        .select('status, total_amount');
+        .select('status');
+
+      // 3. Fetch Payments Logic (Merged for accuracy)
+      const { data: rawPayments } = await (supabase as any)
+        .from('payments')
+        .select('*');
+
+      const { data: podOrders } = await (supabase as any)
+        .from('orders')
+        .select('*')
+        .ilike('shipping_method_name', '%POD%');
+
+      // Merge Logic Reuse
+      const existingPaymentOrderIds = new Set((rawPayments || []).map((p: any) => p.order_id));
+      const virtualPayments = (podOrders || [])
+        .filter((order: any) => !existingPaymentOrderIds.has(order.id))
+        .map((order: any) => ({
+          id: `virt-${order.id}`,
+          order_id: order.id,
+          user_id: order.user_id,
+          transaction_id: `POD-${order.id.slice(0, 8)}`,
+          payment_method: 'Pay on Delivery (Manual)',
+          amount: order.total_amount,
+          currency: 'USD',
+          status: order.status === 'cancelled' ? 'failed' : 'pending',
+          rzp_payment_id: 'N/A',
+          created_at: order.created_at,
+          is_virtual: true
+        }));
+
+      const allPayments = [...(rawPayments || []), ...virtualPayments];
+
+      // Calculate Metrics
+      const totalRevenue = allPayments
+        .filter((p: any) => ['success', 'captured', 'paid'].includes(p.status) && p.status !== 'refunded')
+        .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+
+      const pendingPOD = allPayments
+        .filter((p: any) => p.status === 'pending' && (p.payment_method?.includes('Pay on Delivery') || p.is_virtual))
+        .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
       if (orders) {
         const pendingCount = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
-        const totalRevenue = orders
-          .filter(o => o.status !== 'cancelled')
-          .reduce((sum, o) => sum + Number(o.total_amount), 0);
 
         setStats({
           totalProducts: productsCount || 0,
           totalOrders: orders.length,
           pendingOrders: pendingCount,
-          revenue: totalRevenue
+          revenue: totalRevenue,
+          pendingPOD: pendingPOD
         });
       }
     };
@@ -100,6 +140,7 @@ const AdminDashboard = () => {
     { path: '/admin/customers', icon: Users, label: 'Member Directory' },
     { path: '/admin/shipping', icon: Truck, label: 'Logistics Matrix' },
     { path: '/admin/coupons', icon: Ticket, label: 'Incentive Keys' },
+    { path: '/admin/payments', icon: CreditCard, label: 'Payment Archive' },
     { path: '/admin/settings', icon: Settings, label: 'Atelier Settings' },
   ];
 
@@ -108,7 +149,6 @@ const AdminDashboard = () => {
     return location.pathname.startsWith(path);
   };
 
-  console.log('Current Admin Path:', location.pathname);
   const isMainDashboard = location.pathname === '/admin' || location.pathname === '/admin/';
 
   return (
@@ -184,13 +224,13 @@ const AdminDashboard = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
               {[
-                { label: 'Total Artifacts', value: stats.totalProducts, detail: 'Archive Catalog' },
+                { label: 'Total Secured Revenue', value: `$${stats.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, detail: 'Verified & Captured Assets' },
+                { label: 'Pending Collections', value: `$${stats.pendingPOD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, detail: 'Awaiting Concierge Settlement', isAlert: true },
                 { label: 'Archival Orders', value: stats.totalOrders, detail: 'Lifetime Acquisitions' },
-                { label: 'Active Sessions', value: stats.pendingOrders, detail: 'Awaiting Logistics' },
-                { label: 'Total Revenue', value: `$${stats.revenue.toLocaleString()}`, detail: 'Member Contributions' },
+                { label: 'Total Artifacts', value: stats.totalProducts, detail: 'Archive Catalog' },
               ].map((stat, i) => (
-                <div key={i} className="bg-white border border-accent/5 rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 group">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-8 border-b border-accent/5 pb-4 group-hover:text-accent transition-colors">{stat.label}</p>
+                <div key={i} className={`bg-white border border-accent/5 rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 group ${stat.isAlert ? 'bg-primary/5 border-accent/10' : ''}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-8 border-b border-accent/5 pb-4 transition-colors ${stat.isAlert ? 'text-accent' : 'text-primary/30 group-hover:text-accent'}`}>{stat.label}</p>
                   <p className="text-2xl font-black mb-1 tracking-tighter text-primary">{stat.value}</p>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/40 italic">{stat.detail}</p>
                 </div>

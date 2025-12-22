@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,9 +68,11 @@ interface OrderItem {
 
 const Orders = () => {
   const { user, loading: authLoading } = useAuth();
+  const { clearCart } = useCart();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<Record<string, OrderItem[]>>({});
+  const [payments, setPayments] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string | null>(null);
   const [userPhone, setUserPhone] = useState<string | null>(null);
@@ -113,6 +116,8 @@ const Orders = () => {
 
       // Fetch order items for each order
       if (data && data.length > 0) {
+        const orderIds = data.map(o => o.id);
+
         const itemsPromises = data.map(async (order) => {
           const { data: items } = await supabase
             .from('order_items')
@@ -121,12 +126,29 @@ const Orders = () => {
           return { orderId: order.id, items: items || [] };
         });
 
+        // Fetch payments
+        const { data: paymentsData } = await supabase
+          .from('payments' as any)
+          .select('*')
+          .in('order_id', orderIds);
+
+        const paymentsMap: Record<string, any> = {};
+        if (paymentsData) {
+          paymentsData.forEach((p: any) => {
+            paymentsMap[p.order_id] = p;
+          });
+        }
+        setPayments(paymentsMap);
+
         const itemsResults = await Promise.all(itemsPromises);
         const itemsMap: Record<string, OrderItem[]> = {};
         itemsResults.forEach(({ orderId, items }) => {
           itemsMap[orderId] = items;
         });
         setOrderItems(itemsMap);
+      } else {
+        setPayments({});
+        setOrderItems({});
       }
 
       setLoading(false);
@@ -149,6 +171,15 @@ const Orders = () => {
     if (user) {
       fetchOrders();
       fetchProfile();
+
+      // Check for successful order redirect
+      const queryParams = new URLSearchParams(window.location.search);
+      const orderId = queryParams.get('order_id');
+      if (orderId) {
+        clearCart();
+        toast.success(`Acquisition confirmed: Order #${orderId.slice(0, 8).toUpperCase()}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
 
       // Realtime subscription
       const channel = supabase
@@ -277,6 +308,42 @@ const Orders = () => {
       if (!data || data.length === 0) {
         toast.error('Order cannot be cancelled or was not found');
         return;
+      }
+
+      // 4. Auto-refund payment
+      const { data: payment } = await supabase
+        .from('payments' as any)
+        .select('*')
+        .eq('order_id', orderId)
+        .single();
+
+      if (payment) {
+        // Update existing payment to refunded
+        await supabase
+          .from('payments' as any)
+          .update({ status: 'refunded' })
+          .eq('order_id', orderId);
+        console.log('Payment auto-refunded for cancelled order:', orderId);
+      } else {
+        // For POD orders without payment record, create a refunded payment entry
+        const cancelledOrder = data[0] as any;
+        if (cancelledOrder.shipping_method_name?.includes('POD')) {
+          const txId = `POD-REFUND-${orderId.slice(0, 8)}`;
+          await supabase
+            .from('payments' as any)
+            .insert({
+              order_id: orderId,
+              user_id: user.id,
+              amount: cancelledOrder.total_amount,
+              currency: 'INR',
+              status: 'refunded',
+              payment_method: 'Pay on Delivery',
+              transaction_id: txId,
+              rzp_payment_id: txId,
+              created_at: new Date().toISOString()
+            });
+          console.log('POD payment marked as refunded for cancelled order:', orderId);
+        }
       }
 
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
@@ -607,6 +674,14 @@ const Orders = () => {
 
                                 return (
                                   <>
+                                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
+                                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">Payment Protocol</span>
+                                      <div className="text-right">
+                                        <span className="text-xs font-bold text-white block">{payments[order.id]?.payment_method || 'Standard Gateway'}</span>
+                                        {payments[order.id]?.status === 'pending' && <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 italic">Pending Settlement</span>}
+                                      </div>
+                                    </div>
+
                                     <div className="flex justify-between items-center">
                                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Gross Value</span>
                                       <Price amount={calculatedGross} className="text-base font-bold text-white" />
@@ -663,6 +738,7 @@ const Orders = () => {
             email: user?.email || null,
             phone: userPhone || invoiceOrder.shipping_phone
           }}
+          paymentInfo={invoiceOrder ? payments[invoiceOrder.id] : null}
         />
       )}
 

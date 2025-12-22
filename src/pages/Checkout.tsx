@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin, Check, Ticket, X as LucideX } from 'lucide-react';
+import { CheckCircle, CreditCard, Truck, Plus, Trash2, MapPin, Check, Ticket, X as LucideX, ShieldCheck } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
 import {
   Dialog,
@@ -22,6 +22,13 @@ import {
 import { SEO } from '@/components/SEO';
 import { Price } from '@/components/Price';
 import { calculateOrderTotals, roundPrice } from '@/lib/calculations';
+import { useSiteSettings } from '@/context/SiteSettingsContext';
+// Cashfree is loaded via CDN in index.html to avoid bundling issues
+declare global {
+  interface Window {
+    Cashfree: any;
+  }
+}
 
 interface SavedAddress {
   id: string;
@@ -206,6 +213,38 @@ const Checkout = () => {
     }
   }, [shippingFee, appliedCoupon]);
 
+  const { allowCheckouts, enablePOD, enableOnlinePayments, loading: settingsLoading } = useSiteSettings();
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'pod'>('online');
+
+  // Update payment method based on available options
+  useEffect(() => {
+    // If current method is online but online payments are disabled, switch to POD if available
+    if (paymentMethod === 'online' && !enableOnlinePayments) {
+      if (enablePOD) {
+        setPaymentMethod('pod');
+      }
+    }
+    // If current method is POD but POD is disabled, switch to online if available
+    else if (paymentMethod === 'pod' && !enablePOD) {
+      if (enableOnlinePayments) {
+        setPaymentMethod('online');
+      }
+    }
+    // Initial load: prioritize online if both available, otherwise use what's available
+    else if (settingsLoading === false) {
+      if (!enableOnlinePayments && enablePOD && paymentMethod === 'online') {
+        setPaymentMethod('pod');
+      }
+    }
+  }, [enablePOD, enableOnlinePayments, paymentMethod, settingsLoading]);
+
+  useEffect(() => {
+    if (!settingsLoading && !allowCheckouts) {
+      toast.error('Acquisition Protocol Offline. The terminal is currently not accepting new orders.');
+      navigate('/shop');
+    }
+  }, [allowCheckouts, settingsLoading, navigate]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       toast.error('Please sign in to checkout');
@@ -307,6 +346,17 @@ const Checkout = () => {
       return;
     }
 
+    if (!allowCheckouts) {
+      toast.error('Acquisition Protocol Offline. The terminal is currently not accepting new orders.');
+      navigate('/shop');
+      return;
+    }
+
+    if (!(window as any).Razorpay) {
+      toast.error('Payment gateway is loading. Please try again in a moment.');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -343,6 +393,10 @@ const Checkout = () => {
       }
 
       // Create order with order-specific details
+      // Create order with order-specific details
+      const shippingMethodName = selectedProvider?.name || 'Standard Logistics';
+      const finalShippingMethod = paymentMethod === 'pod' ? `${shippingMethodName} (Concierge POD)` : shippingMethodName;
+
       const { data: order, error: orderError } = await supabase
         .from('orders' as any)
         .insert({
@@ -354,7 +408,7 @@ const Checkout = () => {
           shipping_country: formData.country,
           shipping_phone: formData.phone || null,
           shipping_name: `${formData.firstName} ${formData.lastName}`,
-          shipping_method_name: selectedProvider?.name || 'Standard Logistics',
+          shipping_method_name: finalShippingMethod,
           shipping_fee: shippingFee,
           coupon_id: appliedCoupon?.id || null,
           discount_amount: discountAmount,
@@ -379,34 +433,100 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Deduct inventory using RPC for atomicity and size-specific handling
-      const { error: deductError } = await (supabase as any).rpc('deduct_inventory', {
-        p_items: items.map(item => ({
-          product_id: item.productId,
-          size: item.size?.trim() || 'N/A',
-          quantity: item.quantity
-        }))
-      });
+      if (paymentMethod === 'pod') {
+        // POD Flow: No payment gateway required
+        // Create a payment record with 'pending' status
+        const txId = `POD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      if (deductError) {
-        console.error('Inventory deduction error:', deductError);
-        toast.error(`Stock synchronization alert: ${deductError.message}. Our curatorial team has been notified.`);
-        // We proceed as the order record is already secured in the archive
+        const { error: paymentError } = await supabase
+          .from('payments' as any)
+          .insert({
+            order_id: (order as any).id,
+            user_id: user.id,
+            amount: grandTotal,
+            currency: 'INR', // Use standard currency or assume INR for consistency if fallback needed
+            status: 'pending', // Awaiting payment on delivery
+            payment_method: 'Pay on Delivery',
+            transaction_id: txId,
+            rzp_payment_id: txId, // Fallback for Not Null constraint
+            created_at: new Date().toISOString()
+          });
+
+        if (paymentError) {
+          console.error('Failed to create payment record:', paymentError);
+          // We don't block the order success, but we log it.
+        }
+
+        toast.success('Concierge delivery confirmed. Acquisition registered.');
+        navigate(`/orders?order_id=${(order as any).id}`);
+        return;
       }
 
-      // Increment coupon usage if applicable using secure RPC
-      if (appliedCoupon) {
-        await (supabase as any).rpc('increment_coupon_usage', {
-          p_coupon_id: appliedCoupon.id
+      // Online Payment Flow: Razorpay
+      let rzpData, rzpError;
+      try {
+        const response = await supabase.functions.invoke('create-razorpay-order', {
+          body: {
+            amount: grandTotal,
+            currency: 'INR',
+            receipt: (order as any).id,
+            user_id: user.id,
+          }
         });
+        rzpData = response.data;
+        rzpError = response.error;
+      } catch (invkErr) {
+        console.error('Function invocation error:', invkErr);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', (order as any).id);
+        throw new Error('Could not connect to payment gateway. Please try again.');
       }
 
-      setOrderComplete(true);
-      clearCart();
-      toast.success('Archival piece secured in your personal registry');
+      if (rzpError || rzpData?.error) {
+        console.error('Razorpay initialization failed:', rzpError || rzpData?.error);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', (order as any).id);
+        throw new Error(rzpData?.error || 'Payment gateway rejected the order initialization.');
+      }
+
+      // Initiate Razorpay checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        amount: rzpData.amount,
+        currency: rzpData.currency,
+        name: 'Maison',
+        description: 'Order Acquisition',
+        order_id: rzpData.id,
+        handler: function (response: any) {
+          console.log('Razorpay payment successful:', response);
+          toast.success('Payment authorized. Ritual complete.');
+          navigate(`/orders?order_id=${(order as any).id}`);
+        },
+        prefill: {
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: user.email || formData.email,
+          contact: formData.phone || '9999999999'
+        },
+        theme: {
+          color: '#FFFAF5'
+        },
+        modal: {
+          ondismiss: function () {
+            // Check if payment was really failed or just closed
+            console.log('Checkout modal closed');
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+
+      // Inventory deduction and coupon increment will move to a webhook or 
+      // be handled after successful payment. For now, since we are doing a 
+      // simple integration, we'll keep the client-side success path if possible.
+      // But CF redirect/modal usually takes over.
+
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error('Failed to place order. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -414,13 +534,13 @@ const Checkout = () => {
 
 
 
-  if (authLoading) {
+  if (authLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
         <Header />
         <CartDrawer />
         <main className="flex-1 pt-32 sm:pt-48 pb-32">
-          <PremiumLoader />
+          <PremiumLoader message="Synchronizing Protocol Status..." />
         </main>
         <Footer />
       </div>
@@ -708,38 +828,97 @@ const Checkout = () => {
                   </div>
                 )}
 
-                {/* Payment */}
-                <div className="bg-[#111] text-white p-12 rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                {/* Payment Information */}
+                <div className="bg-[#111] text-white p-12 rounded-[3.5rem] shadow-2xl relative overflow-hidden group transition-all duration-500">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full -mr-32 -mt-32 blur-3xl opacity-20" />
                   <div className="flex items-center gap-4 mb-10 relative z-10">
-                    <CreditCard className="w-8 h-8 text-accent" />
-                    <h2 className="font-heading text-2xl font-bold tracking-tight uppercase italic">Secure Vault</h2>
+                    <ShieldCheck className="w-8 h-8 text-accent" />
+                    <h2 className="font-heading text-2xl font-bold tracking-tight uppercase italic">Secure Payment</h2>
                   </div>
 
                   <div className="space-y-8 relative z-10">
-                    <div className="space-y-3">
-                      <Label htmlFor="cardNumber" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">Card Artifact</Label>
-                      <Input id="cardNumber" required placeholder="4242 4242 4242 4242" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
-                    </div>
+                    {(enablePOD || enableOnlinePayments) && (
+                      <div className={`grid grid-cols-1 ${enablePOD && enableOnlinePayments ? 'md:grid-cols-2' : ''} gap-4`}>
+                        {enableOnlinePayments && (
+                          <div
+                            onClick={() => setPaymentMethod('online')}
+                            className={`cursor-pointer rounded-3xl p-6 border transition-all duration-300 ${paymentMethod === 'online' ? 'bg-white/10 border-accent shadow-lg shadow-accent/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                          >
+                            <div className="flex items-center gap-4 mb-4">
+                              <CreditCard className={`w-6 h-6 ${paymentMethod === 'online' ? 'text-accent' : 'text-white/60'}`} />
+                              <p className="font-bold text-sm">Online Transfer</p>
+                            </div>
+                            <p className="text-[10px] text-white/50 leading-relaxed">Secure digital gateway via UPI, Card, or Netbanking.</p>
+                          </div>
+                        )}
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <Label htmlFor="expiry" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">Expiry</Label>
-                        <Input id="expiry" required placeholder="MM/YY" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
+                        {enablePOD && (
+                          <div
+                            onClick={() => setPaymentMethod('pod')}
+                            className={`cursor-pointer rounded-3xl p-6 border transition-all duration-300 ${paymentMethod === 'pod' ? 'bg-white/10 border-accent shadow-lg shadow-accent/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                          >
+                            <div className="flex items-center gap-4 mb-4">
+                              <Truck className={`w-6 h-6 ${paymentMethod === 'pod' ? 'text-accent' : 'text-white/60'}`} />
+                              <p className="font-bold text-sm">Concierge P.O.D</p>
+                            </div>
+                            <p className="text-[10px] text-white/50 leading-relaxed">Settle the acquisition upon personal delivery.</p>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-3">
-                        <Label htmlFor="cvc" className="text-[10px] uppercase font-black tracking-widest text-accent/60 ml-2">CVC</Label>
-                        <Input id="cvc" required placeholder="123" className="h-14 bg-white/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white/10 transition-all font-mono" />
+                    )}
+
+                    {!enablePOD && !enableOnlinePayments && (
+                      <div className="p-6 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-rose-200">
+                        <p className="text-sm font-bold flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5" /> Protocol Paused
+                        </p>
+                        <p className="text-[10px] uppercase tracking-widest mt-2 opacity-70">
+                          No payment methods are currently active. Please contact concierge support.
+                        </p>
                       </div>
-                    </div>
+                    )}
+
+                    {paymentMethod === 'online' && enableOnlinePayments ? (
+                      <div className="space-y-6 animate-fade-in">
+                        <p className="text-secondary italic font-medium leading-relaxed text-sm">
+                          You will be redirected to the secure payment gateway to complete your acquisition. All transactions are encrypted.
+                        </p>
+                        {!enablePOD && (
+                          <div className="flex items-center gap-6 p-6 rounded-3xl bg-white/5 border border-white/10">
+                            <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center">
+                              <CreditCard className="w-6 h-6 text-accent" />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">Payment Method</p>
+                              <p className="font-bold text-sm">Credit/Debit Card, UPI, & Net Banking</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : paymentMethod === 'pod' && enablePOD ? (
+                      <div className="space-y-6 animate-fade-in opacity-0 animate-fade-in fill-mode-forwards" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+                        <p className="text-secondary italic font-medium leading-relaxed text-sm">
+                          Our concierge team will collect the payment when they deliver your archival pieces. We accept Cash, UPI, or Card on delivery.
+                        </p>
+                        <div className="flex items-center gap-6 p-6 rounded-3xl bg-white/5 border border-white/10">
+                          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center">
+                            <Truck className="w-6 h-6 text-accent" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">Delivery Protocol</p>
+                            <p className="font-bold text-sm">Pay upon physical receipt</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-4">
                   <Button
                     type="submit"
-                    className={`w-full h-20 font-black uppercase tracking-[0.2em] text-sm shadow-2xl transition-all rounded-[2.5rem] mt-4 ${items.some(i => i.inventory === 0) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary text-white hover:bg-black hover:scale-[1.02] active:scale-[0.98]'}`}
-                    disabled={isProcessing || items.some(i => i.inventory === 0)}
+                    className={`w-full h-20 font-black uppercase tracking-[0.2em] text-sm shadow-2xl transition-all rounded-[2.5rem] mt-4 ${(!allowCheckouts || items.some(i => i.inventory === 0) || (!enablePOD && !enableOnlinePayments)) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary text-white hover:bg-black hover:scale-[1.02] active:scale-[0.98]'}`}
+                    disabled={isProcessing || !allowCheckouts || items.some(i => i.inventory === 0) || (!enablePOD && !enableOnlinePayments)}
                   >
                     {isProcessing ? (
                       <div className="flex items-center gap-4">
@@ -748,11 +927,15 @@ const Checkout = () => {
                         </div>
                         <span>Verifying Archive...</span>
                       </div>
+                    ) : !allowCheckouts ? (
+                      <span>Acquisitions Restricted</span>
                     ) : items.some(i => i.inventory === 0) ? (
                       <span>Remove Depleted Artifacts</span>
+                    ) : (!enablePOD && !enableOnlinePayments) ? (
+                      <span>Payment Protocols Offline</span>
                     ) : (
                       <div className="flex items-center gap-2 justify-center">
-                        Confirm Acquisition (<Price amount={grandTotal} />)
+                        {paymentMethod === 'online' ? 'Secure Acquisition' : 'Confirm Concierge Order'} (<Price amount={grandTotal} />)
                       </div>
                     )}
                   </Button>

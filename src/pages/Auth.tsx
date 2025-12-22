@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { SEO } from '@/components/SEO';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { useSiteSettings } from '@/context/SiteSettingsContext';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -23,35 +24,14 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [allowSignups, setAllowSignups] = useState(true);
-  const [settingsLoading, setSettingsLoading] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
 
+  const { allowSignups, loading: settingsLoading } = useSiteSettings();
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as { from?: string })?.from || '/';
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data } = await supabase
-          .from('site_settings' as any)
-          .select('*')
-          .eq('key', 'allow_signups')
-          .single();
-        if (data) {
-          setAllowSignups((data as any).value === 'true');
-        }
-      } catch (err) {
-        console.error('Error fetching auth settings:', err);
-      } finally {
-        setSettingsLoading(false);
-      }
-    };
-    fetchSettings();
-  }, []);
 
   useEffect(() => {
     if (!authLoading && user) {

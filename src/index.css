@@ -97,7 +97,7 @@
     @apply border-border;
   }
 
-  html {
+  html, body, #root {
     scroll-behavior: smooth;
   }
 

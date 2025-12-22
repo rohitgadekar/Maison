@@ -73,6 +73,7 @@ type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancell
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [paymentMap, setPaymentMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -82,6 +83,7 @@ const AdminOrders = () => {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
   const [pendingStatusChange, setPendingStatusChange] = useState<{ orderId: string; status: OrderStatus } | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [printingOrder, setPrintingOrder] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -99,6 +101,23 @@ const AdminOrders = () => {
 
     setOrders((data as any) || []);
     setFilteredOrders((data as any) || []);
+
+    if (data && data.length > 0) {
+      const orderIds = data.map(o => o.id);
+      const { data: paymentsData } = await supabase
+        .from('payments' as any)
+        .select('*')
+        .in('order_id', orderIds);
+
+      const pMap: Record<string, any> = {};
+      if (paymentsData) {
+        paymentsData.forEach((p: any) => {
+          pMap[p.order_id] = p;
+        });
+      }
+      setPaymentMap(pMap);
+    }
+
     setLoading(false);
   };
 
@@ -118,6 +137,13 @@ const AdminOrders = () => {
 
   useEffect(() => {
     fetchOrders();
+
+    // Check for order ID in URL
+    const params = new URLSearchParams(window.location.search);
+    const searchId = params.get('id') || params.get('search');
+    if (searchId) {
+      setSearchQuery(searchId);
+    }
   }, []);
 
   const handlePrintInvoice = (orderId: string) => {
@@ -138,7 +164,6 @@ const AdminOrders = () => {
 
     setOrderItems(items || []);
 
-    // Fetch customer profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, email, phone')
@@ -146,6 +171,14 @@ const AdminOrders = () => {
       .single();
 
     setCustomerProfile(profile);
+
+    // Fetch payment info
+    const { data: payments } = await supabase
+      .from('payments' as any)
+      .select('*')
+      .eq('order_id', order.id);
+
+    setPaymentInfo(payments && payments.length > 0 ? payments[0] : null);
     setIsDialogOpen(true);
   };
 
@@ -239,6 +272,54 @@ const AdminOrders = () => {
       return;
     }
 
+    // Auto-refund payment if order is cancelled
+    if (newStatus === 'cancelled') {
+      const { data: payment } = await supabase
+        .from('payments' as any)
+        .select('*')
+        .eq('order_id', orderId)
+        .single();
+
+      if (payment) {
+        // Update existing payment to refunded
+        const { error: refundError } = await supabase
+          .from('payments' as any)
+          .update({ status: 'refunded' })
+          .eq('order_id', orderId);
+
+        if (refundError) {
+          console.error('Failed to auto-refund payment:', refundError);
+        } else {
+          console.log('Payment auto-refunded for cancelled order:', orderId);
+        }
+      } else {
+        // For POD orders without payment record, create a refunded payment entry
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('total_amount, user_id, shipping_method_name')
+          .eq('id', orderId)
+          .single();
+
+        if (orderData && (orderData as any).shipping_method_name?.includes('POD')) {
+          const txId = `POD-REFUND-${orderId.slice(0, 8)}`;
+          await supabase
+            .from('payments' as any)
+            .insert({
+              order_id: orderId,
+              user_id: (orderData as any).user_id,
+              amount: (orderData as any).total_amount,
+              currency: 'INR',
+              status: 'refunded',
+              payment_method: 'Pay on Delivery',
+              transaction_id: txId,
+              rzp_payment_id: txId,
+              created_at: new Date().toISOString()
+            });
+          console.log('POD payment marked as refunded for cancelled order:', orderId);
+        }
+      }
+    }
+
     toast.success('Acquisition Registry updated');
     fetchOrders();
 
@@ -330,6 +411,7 @@ const AdminOrders = () => {
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Acquisition ID</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Timestamp</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Registry Status</th>
+                    <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Payment Protocol</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Logistics Ref</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Valuation</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Actions</th>
@@ -371,6 +453,26 @@ const AdminOrders = () => {
                             <SelectItem value="cancelled" className="rounded-xl pl-8 pr-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 focus:text-rose-600 focus:bg-rose-50 transition-colors">Dissolved Entry</SelectItem>
                           </SelectContent>
                         </Select>
+                      </td>
+                      <td className="px-10 py-8">
+                        {(() => {
+                          const payment = paymentMap[order.id];
+                          const isPOD = order.shipping_method_name?.includes('POD') || payment?.payment_method === 'Pay on Delivery';
+
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold tracking-tight text-primary">
+                                  {payment?.payment_method || (isPOD ? 'Pay on Delivery' : 'Standard Gateway')}
+                                </span>
+                                {isPOD && <Truck className="w-3 h-3 text-accent" />}
+                              </div>
+                              <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-widest border-none px-0 ${payment?.status === 'success' || payment?.status === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                {payment?.status || (isPOD ? 'Pending Settlement' : 'Awaiting Protocol')}
+                              </Badge>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-10 py-8">
                         {order.tracking_number ? (
@@ -476,6 +578,33 @@ const AdminOrders = () => {
                           <div className="bg-primary text-white px-4 sm:px-6 py-2 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                             <Truck className="w-3 h-3" />
                             {selectedOrder.tracking_number}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/30 mb-4 sm:mb-6 flex items-center gap-3">
+                        <span className="w-8 h-px bg-accent/20" /> Financial Protocol
+                      </h4>
+                      <div className="ml-4 sm:ml-11 flex flex-wrap gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Payment Method</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm tracking-tight">{paymentInfo?.payment_method || 'Standard Gateway'}</span>
+                            {paymentInfo?.payment_method === 'Pay on Delivery' && <Truck className="w-3 h-3 text-accent" />}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">Transaction Status</p>
+                          <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-widest border-none px-0 ${paymentInfo?.status === 'success' || paymentInfo?.status === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {paymentInfo?.status || 'Unknown'}
+                          </Badge>
+                        </div>
+                        {paymentInfo?.transaction_id && (
+                          <div className="space-y-1">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-primary/30">TX ID</p>
+                            <p className="font-mono text-[10px] text-primary/60">{paymentInfo.transaction_id}</p>
                           </div>
                         )}
                       </div>
@@ -654,6 +783,7 @@ const AdminOrders = () => {
             email: customerProfile?.email || null,
             phone: customerProfile?.phone || invoiceOrder.shipping_phone
           }}
+          paymentInfo={invoiceOrder ? paymentMap[invoiceOrder.id] : null}
         />
       )}
     </div>
