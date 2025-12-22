@@ -50,7 +50,7 @@ export function Hero() {
           </div>
 
           <div className="relative lg:block hidden">
-            <div className="aspect-[4/5] relative z-10 rounded-[4rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] group">
+            <div className="h-[85vh] relative z-10 rounded-[4rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] group">
               <img
                 src="https://images.unsplash.com/photo-1616065297556-f05bc00c9a3e?q=80&w=1335&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="Maison Editorial"
