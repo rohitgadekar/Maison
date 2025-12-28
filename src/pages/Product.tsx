@@ -242,7 +242,7 @@ const Product = () => {
       image: images[0],
       size: selectedSize,
       quantity: quantity,
-      inventory: product.inventory
+      inventory: currentStock
     }, !silent);
 
     if (!silent) {

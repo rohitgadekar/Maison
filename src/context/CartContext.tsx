@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 interface CartItem {
   id: string;
@@ -83,11 +84,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           if (item.size) {
             const specificStock = stockMap[`${item.product_id}-${item.size}`];
             // If specific stock record exists, use it. 
-            // If not found but size is present, it might mean 0 or data inconsistency. 
-            // Assume 0 if we expect a stock record for a size.
-            if (specificStock !== undefined) {
-              inventory = specificStock;
-            }
+            // If not found but size is present, we assume 0 for that specific dimension.
+            inventory = specificStock !== undefined ? specificStock : 0;
           }
 
           return {
@@ -181,6 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
         if (existingItem.quantity >= existingItem.inventory) {
+          toast.error("Maximum stock level reached for this artifact.");
           return prevItems;
         }
         return prevItems.map((item) =>
@@ -258,6 +257,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prevItems) => {
       const item = prevItems.find(i => i.id === productId);
       if (item && quantity > item.inventory) {
+        toast.error(`Only ${item.inventory} units available in our archives.`);
         return prevItems;
       }
       return prevItems.map((item) =>

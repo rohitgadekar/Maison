@@ -85,7 +85,7 @@ export function ProductCard({ product, index }: ProductCardProps) {
       id: `${product.id}-${size}`,
       productId: product.id,
       size: size,
-      inventory: product.inventory
+      inventory: stock
     });
     setShowSizePicker(false);
     toast.success(`${product.name} (${size}) added to cart`);
