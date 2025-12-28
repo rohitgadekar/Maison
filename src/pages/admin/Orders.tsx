@@ -18,7 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Eye, Truck, Printer, ChevronDown } from 'lucide-react';
+import { Eye, Truck, Printer, ChevronDown, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Accordion,
   AccordionContent,
@@ -85,8 +86,10 @@ const AdminOrders = () => {
   const [pendingStatusChange, setPendingStatusChange] = useState<{ orderId: string; status: OrderStatus } | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [printingOrder, setPrintingOrder] = useState<string | null>(null);
+  const [isPurgeDialogOpen, setIsPurgeDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -296,6 +299,60 @@ const AdminOrders = () => {
     }
   };
 
+  const toggleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrderIds.length === filteredOrders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(filteredOrders.map(o => o.id));
+    }
+  };
+
+  const handleDeleteOrders = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    try {
+      setLoading(true);
+      setIsPurgeDialogOpen(false);
+
+      // 1. Explicitly delete related payments to ensure Transaction Registry is clean
+      // (Safety measure in case CASCADE is missing)
+      const { error: paymentsError } = await supabase
+        .from('payments' as any)
+        .delete()
+        .in('order_id', selectedOrderIds);
+
+      if (paymentsError) {
+        console.warn('Payment deletion warning:', paymentsError);
+        // We continue nicely even if this fails, assuming CASCADE might handle it or it's already empty
+      }
+
+      // 2. Delete the orders (Items will CASCADE from this if configured, but payments are now safe)
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .delete()
+        .in('id', selectedOrderIds);
+
+      if (ordersError) throw ordersError;
+
+      toast.success(`${selectedOrderIds.length} artifacts purged from registry`);
+      setSelectedOrderIds([]);
+      await fetchOrders();
+    } catch (err: any) {
+      console.error('Purge error:', err);
+      toast.error('Purge failure: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -344,6 +401,24 @@ const AdminOrders = () => {
               </div>
             </div>
           </div>
+          {selectedOrderIds.length > 0 && (
+            <div className="flex items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <Button
+                onClick={() => setIsPurgeDialogOpen(true)}
+                className="h-16 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white px-8 text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-rose-200 gap-3"
+              >
+                <Trash2 className="w-4 h-4" />
+                Purge Selected ({selectedOrderIds.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedOrderIds([])}
+                className="h-16 rounded-2xl border-accent/10 px-8 text-[10px] font-black uppercase tracking-widest"
+              >
+                Reset Selection
+              </Button>
+            </div>
+          )}
         </div>
 
         {orders.length === 0 ? (
@@ -356,6 +431,13 @@ const AdminOrders = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-accent/5">
+                    <th className="px-10 py-8 w-14">
+                      <Checkbox
+                        checked={selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        className="border-accent/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                      />
+                    </th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Acquisition ID</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Timestamp</th>
                     <th className="text-left px-10 py-8 text-[10px] font-black uppercase tracking-[0.4em] text-primary/30">Registry Status</th>
@@ -367,7 +449,17 @@ const AdminOrders = () => {
                 </thead>
                 <tbody className="divide-y divide-accent/5">
                   {filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-accent/5 transition-colors group">
+                    <tr key={order.id} className={cn(
+                      "transition-colors group",
+                      selectedOrderIds.includes(order.id) ? "bg-accent/5" : "hover:bg-accent/5"
+                    )}>
+                      <td className="px-10 py-8">
+                        <Checkbox
+                          checked={selectedOrderIds.includes(order.id)}
+                          onCheckedChange={() => toggleSelectOrder(order.id)}
+                          className="border-accent/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                      </td>
                       <td className="px-10 py-8">
                         <span className="uppercase text-lg font-black tracking-tighter text-primary">#{order.id.slice(0, 8)}</span>
                       </td>
@@ -715,6 +807,49 @@ const AdminOrders = () => {
                     Dissolve
                   </Button>
                 </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Purge Confirmation Dialog */}
+        <Dialog open={isPurgeDialogOpen} onOpenChange={setIsPurgeDialogOpen}>
+          <DialogContent className="max-w-md rounded-[2.5rem] border-rose-500/20 bg-[#FFF5F5]/95 backdrop-blur-3xl p-0 shadow-[0_30px_60px_-15px_rgba(244,63,94,0.3)] overflow-hidden">
+            <div className="p-10 text-center">
+              <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                <Trash2 className="w-8 h-8 text-rose-600" />
+              </div>
+
+              <DialogHeader className="mb-8">
+                <DialogTitle className="font-heading text-3xl font-black tracking-tighter text-rose-950 text-center">
+                  Registry <span className="italic font-light text-rose-600">Purge.</span>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 mb-10 text-center">
+                <p className="text-sm font-medium italic text-rose-900/60 leading-relaxed px-4">
+                  You are about to permanently dissolve <span className="font-black text-rose-700">{selectedOrderIds.length} acquisition entries</span>.
+                  This archival purge is irreversible and will erase all associated logistics and financial records.
+                </p>
+                <div className="bg-rose-500/5 py-3 px-6 rounded-2xl border border-rose-500/10 inline-block">
+                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-rose-600/50">Security Protocol Required</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <Button
+                  onClick={handleDeleteOrders}
+                  className="h-16 rounded-2xl bg-rose-600 text-white hover:bg-rose-700 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-200"
+                >
+                  Confirm Permanent Dissolution
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsPurgeDialogOpen(false)}
+                  className="h-16 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-900/40 hover:text-rose-900/60 hover:bg-rose-500/5"
+                >
+                  Keep Registry Entries
+                </Button>
               </div>
             </div>
           </DialogContent>

@@ -445,8 +445,7 @@ const Checkout = () => {
         console.log('POD Stock deducted instantly');
       }
 
-      // Increment coupon usage if applied
-      if (appliedCoupon) {
+      if (appliedCoupon && paymentMethod === 'pod') {
         await (supabase as any).rpc('increment_coupon_usage', { p_coupon_id: appliedCoupon.id });
       }
 

@@ -76,8 +76,21 @@ serve(async (req) => {
 
     // 3. Fulfill order status (Only if we have a valid internal Order ID)
     if (isUUID(internalOrderId) && (event === 'order.paid' || event === 'payment.captured' || event === 'payment.authorized')) {
-      console.log(`Fulfilling order: ${internalOrderId}`)
+      console.log(`Processing fulfillment for order: ${internalOrderId}`)
       
+      // CRITICAL: Prevent Double Deduction
+      // Razorpay sends multiple events. We must ensure we only process the order once.
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', internalOrderId)
+        .single()
+
+      if (existingOrder && existingOrder.status === 'processing') {
+        console.log(`Order ${internalOrderId} is already processing. Skipping duplicate webhook event.`);
+        return new Response(JSON.stringify({ received: true, note: 'Idempotency check: Already processed' }), { status: 200 })
+      }
+
       // Update order status to 'processing' (Valid Enum Value)
       const { error: orderError } = await supabase
         .from('orders')
