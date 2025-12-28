@@ -433,6 +433,23 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // If POD, deduct stock instantly
+      if (paymentMethod === 'pod') {
+        const inventoryItems = items.map(item => ({
+          product_id: item.productId,
+          size: item.size || null,
+          quantity: item.quantity
+        }));
+
+        await (supabase as any).rpc('deduct_inventory', { p_items: inventoryItems });
+        console.log('POD Stock deducted instantly');
+      }
+
+      // Increment coupon usage if applied
+      if (appliedCoupon) {
+        await (supabase as any).rpc('increment_coupon_usage', { p_coupon_id: appliedCoupon.id });
+      }
+
       if (paymentMethod === 'pod') {
         // POD Flow: No payment gateway required
         // Create a payment record with 'pending' status

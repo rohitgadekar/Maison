@@ -78,30 +78,38 @@ serve(async (req) => {
     if (isUUID(internalOrderId) && (event === 'order.paid' || event === 'payment.captured' || event === 'payment.authorized')) {
       console.log(`Fulfilling order: ${internalOrderId}`)
       
+      // Update order status to 'processing' (Valid Enum Value)
       const { error: orderError } = await supabase
         .from('orders')
-        .update({ status: 'paid', updated_at: new Date().toISOString() })
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
         .eq('id', internalOrderId)
 
       if (orderError) console.error('Order Status Update Error:', orderError)
 
-      // Inventory/Coupon logic
+      // Fetch order details for inventory and coupon updates
       const { data: orderDetails } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .eq('id', internalOrderId)
         .single()
 
-      if (orderDetails && orderDetails.status === 'paid' && orderDetails.order_items?.length > 0) {
+      if (orderDetails && orderDetails.order_items?.length > 0) {
+        // DEDUCT INVENTORY
+        // For online orders, we only deduct stock once the payment is confirmed.
         const inventoryItems = orderDetails.order_items.map((item: any) => ({
           product_id: item.product_id,
           size: item.size?.trim() || 'N/A',
           quantity: item.quantity
         }))
-        await supabase.rpc('deduct_inventory', { p_items: inventoryItems })
         
+        const { error: stockError } = await supabase.rpc('deduct_inventory', { p_items: inventoryItems })
+        if (stockError) console.error('Webhook Inventory Deduction Error:', stockError)
+        else console.log('Webhook Stock Deduction Successful for Order:', internalOrderId)
+
+        // INCREMENT COUPON USAGE
         if (orderDetails.coupon_id) {
-          await supabase.rpc('increment_coupon_usage', { p_coupon_id: orderDetails.coupon_id })
+          const { error: couponError } = await supabase.rpc('increment_coupon_usage', { p_coupon_id: orderDetails.coupon_id })
+          if (couponError) console.error('Coupon usage increment failed:', couponError)
         }
       }
     }
