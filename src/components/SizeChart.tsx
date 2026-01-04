@@ -26,11 +26,14 @@ export function SizeChart({ data }: SizeChartProps) {
                     </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] bg-[#FFFAF5] border-accent/10 rounded-[2rem] p-0 overflow-hidden flex flex-col">
-                    <DialogHeader className="p-8 pb-0 shrink-0">
+                    <DialogHeader className="p-8 pr-16 sm:pr-20 pb-0 shrink-0">
                         <span className="text-[9px] font-black uppercase tracking-[0.4em] text-accent block mb-2">Reference Protocol</span>
                         <DialogTitle className="font-heading text-3xl font-bold">Size Guide.</DialogTitle>
                     </DialogHeader>
-                    <div className="p-8 overflow-y-auto flex-1">
+                    <div
+                        data-lenis-prevent
+                        className="p-8 overflow-y-auto flex-1"
+                    >
                         <img src={data} alt="Size Chart" className="w-full rounded-xl border border-accent/10" />
                     </div>
                 </DialogContent>
@@ -47,7 +50,7 @@ export function SizeChart({ data }: SizeChartProps) {
                 </button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] bg-[#FFFAF5] border-accent/10 rounded-[2rem] p-0 overflow-hidden flex flex-col">
-                <DialogHeader className="p-6 sm:p-8 pb-4 shrink-0">
+                <DialogHeader className="p-6 sm:p-8 pr-16 sm:pr-20 pb-4 shrink-0">
                     <span className="text-[9px] font-black uppercase tracking-[0.4em] text-accent block mb-2">Measurements & Fit</span>
                     <div className="flex items-center justify-between gap-4">
                         <DialogTitle className="font-heading text-2xl sm:text-3xl font-bold">Size Protocol.</DialogTitle>
@@ -73,7 +76,10 @@ export function SizeChart({ data }: SizeChartProps) {
                         </div>
                     </div>
                 </DialogHeader>
-                <div className="flex-1 overflow-auto p-4 sm:p-8 pt-0 scrollbar-thin scrollbar-thumb-accent/20">
+                <div
+                    data-lenis-prevent
+                    className="flex-1 overflow-auto p-4 sm:p-8 pt-0 scrollbar-thin scrollbar-thumb-accent/20"
+                >
                     <div className="min-w-[600px] sm:min-w-0">
                         <table className="w-full text-xs sm:text-sm border-collapse">
                             <thead>

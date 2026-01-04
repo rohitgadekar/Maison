@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CartDrawer } from '@/components/CartDrawer';
@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Minus, Plus, ShoppingBag, ChevronLeft, ChevronRight, Truck, ShieldCheck, RotateCcw, Heart } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, ChevronLeft, ChevronRight, Truck, ShieldCheck, RotateCcw, Heart, Globe, Award, Clock, Sparkles, Info, Ruler, Share2 } from 'lucide-react';
 import { SEO } from '@/components/SEO';
 import { useWishlist } from '@/context/WishlistContext';
-import { cn } from '@/lib/utils';
+import { cn, slugify } from '@/lib/utils';
 import { Price } from '@/components/Price';
 import { SizeChart, SizeChartData } from '@/components/SizeChart';
 import { PremiumLoader } from '@/components/PremiumLoader';
@@ -40,7 +40,8 @@ const isVideo = (url: string | null) => {
 
 
 const Product = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -54,33 +55,43 @@ const Product = () => {
   const [isStockLoading, setIsStockLoading] = useState(true);
 
   useEffect(() => {
+    let stockChannel: any = null;
+
     const fetchProduct = async (): Promise<ProductData | null> => {
-      if (!id) {
+      if (!slug) {
         setLoading(false);
         return null;
       }
 
-      const { data, error } = await supabase
+      // Since we don't have a direct slug column, we fetch active products and find a match
+      // For large catalogs, a 'slug' column should be added to the products table.
+      const { data: allProducts, error } = await supabase
         .from('products')
         .select('*')
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching product:', error);
+        console.error('Error fetching products:', error);
         toast.error('Product not found');
         navigate('/shop');
         setLoading(false);
         return null;
       }
 
-      setProduct(data);
-      setQuantity(data.inventory > 0 ? 1 : 0);
-      // Initial size selection will be handled after stock data is fetched
+      const foundProduct = allProducts?.find(p => slugify(p.name) === slug);
+
+      if (!foundProduct) {
+        toast.error('Product not found');
+        navigate('/shop');
+        setLoading(false);
+        return null;
+      }
+
+      setProduct(foundProduct);
+      setQuantity(foundProduct.inventory > 0 ? 1 : 0);
       setSelectedImageIndex(0);
       setLoading(false);
-      return data;
+      return foundProduct;
     };
 
     const fetchSizeStocks = async (productData: ProductData) => {
@@ -99,8 +110,12 @@ const Product = () => {
 
         // Find first available size with stock
         if (productData && productData.sizes) {
+          const currentSizeParam = searchParams.get('size');
           const firstAvailable = productData.sizes.find(s => (stocks[s] || 0) > 0);
-          if (firstAvailable) {
+
+          if (currentSizeParam && productData.sizes.includes(currentSizeParam)) {
+            setSelectedSize(currentSizeParam);
+          } else if (firstAvailable) {
             setSelectedSize(firstAvailable);
           } else if (productData.sizes.length > 0) {
             // If no stock for any size, default to the first size, but it will show out of stock
@@ -111,10 +126,50 @@ const Product = () => {
       setIsStockLoading(false);
     };
 
+    const setupRealtime = (productId: string) => {
+      stockChannel = supabase
+        .channel(`product_stock_${productId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'product_stocks',
+            filter: `product_id=eq.${productId}`,
+          },
+          async () => {
+            const { data } = await (supabase as any)
+              .from('product_stocks')
+              .select('size, quantity')
+              .eq('product_id', productId);
+
+            if (data) {
+              const stocks: Record<string, number> = {};
+              data.forEach((s: any) => { stocks[s.size] = s.quantity; });
+              setSizeStocks(stocks);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'products',
+            filter: `id=eq.${productId}`,
+          },
+          async (payload) => {
+            setProduct((prev) => prev ? { ...prev, inventory: payload.new.inventory } : null);
+          }
+        )
+        .subscribe();
+    };
+
     const initializeProductData = async () => {
       const productData = await fetchProduct();
       if (productData) {
         fetchSizeStocks(productData);
+        setupRealtime(productData.id);
 
         // Fetch similar products
         const { data: similar } = await (supabase as any)
@@ -131,90 +186,78 @@ const Product = () => {
 
     initializeProductData();
 
-    // Realtime subscription for stock updates
-    const stockChannel = supabase
-      .channel(`product_stock_${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'product_stocks',
-          filter: `product_id=eq.${id}`,
-        },
-        async () => {
-          // Re-fetch individual size stocks
-          if (product) { // We might not have product in closure yet if we use stale state, but we can re-use fetch function logic
-            // Ideally we pass current product ID. 'id' from useParams is stable.
-            // We can just call fetchSizeStocks(product) but 'product' state is not available in this effect closure initial render
-            // unless we add it to dependency array which causes loop. 
-            // Better to re-fetch raw data:
-            const { data } = await (supabase as any)
-              .from('product_stocks')
-              .select('size, quantity')
-              .eq('product_id', id);
-
-            if (data) {
-              const stocks: Record<string, number> = {};
-              data.forEach((s: any) => { stocks[s.size] = s.quantity; });
-              setSizeStocks(stocks);
-            }
-          } else {
-            // Fallback if product state isn't ready, we just fetch stocks by ID
-            const { data } = await (supabase as any)
-              .from('product_stocks')
-              .select('size, quantity')
-              .eq('product_id', id);
-            if (data) {
-              const stocks: Record<string, number> = {};
-              data.forEach((s: any) => { stocks[s.size] = s.quantity; });
-              setSizeStocks(stocks);
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'products',
-          filter: `id=eq.${id}`,
-        },
-        async (payload) => {
-          // Update total inventory
-          setProduct((prev) => prev ? { ...prev, inventory: payload.new.inventory } : null);
-        }
-      )
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(stockChannel);
+      if (stockChannel) {
+        supabase.removeChannel(stockChannel);
+      }
     };
-  }, [id, navigate]);
+  }, [slug, navigate, searchParams]);
 
-  const getProductImages = (): string[] => {
+  const handleSizeChange = (size: string) => {
+    setSelectedSize(size);
+    setSearchParams({ size }, { replace: true });
+    if (sizeStocks[size] < quantity) {
+      setQuantity(Math.max(1, sizeStocks[size] || 0));
+    }
+  };
+
+  const handleShare = async () => {
+    // Construct the URL explicitly from current state to avoid any window.location race conditions
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const shareUrl = selectedSize
+      ? `${baseUrl}?size=${encodeURIComponent(selectedSize)}`
+      : baseUrl;
+
+    const shareData = {
+      title: `${product?.name} | Maison Archive`,
+      text: product?.description || '',
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Archival link secured to clipboard');
+        }
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Archival link secured to clipboard');
+    }
+  };
+
+  // Stabilize the image list
+  const currentProductImages = useMemo(() => {
     if (!product) return [];
 
-    const images: string[] = [];
-
-    // Add images from images array
+    const imgList: string[] = [];
     if (product.images && product.images.length > 0) {
-      images.push(...product.images);
+      imgList.push(...product.images);
     }
-
-    // Add image_url if exists and not already in images
-    if (product.image_url && !images.includes(product.image_url)) {
-      images.unshift(product.image_url);
+    if (product.image_url && !imgList.includes(product.image_url)) {
+      imgList.unshift(product.image_url);
     }
-
-    // Fallback to placeholder if no images
-    if (images.length === 0) {
-      images.push('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop');
+    if (imgList.length === 0) {
+      imgList.push('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=750&fit=crop');
     }
+    return imgList.slice(0, 5);
+  }, [product]);
 
-    return images.slice(0, 5); // Max 5 images
-  };
+  // Automatic Image Rotation (10s Interval)
+  useEffect(() => {
+    if (currentProductImages.length <= 1 || !product) return;
+
+    const interval = setInterval(() => {
+      setSelectedImageIndex((prev) => (prev === currentProductImages.length - 1 ? 0 : prev + 1));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [product, currentProductImages.length]);
+
+
 
   const handleAddToCart = (silent = false) => {
     if (!product) return;
@@ -231,7 +274,7 @@ const Product = () => {
       return;
     }
 
-    const images = getProductImages();
+    const images = currentProductImages;
     addToCart({
       id: selectedSize ? `${product.id}-${selectedSize}` : product.id,
       productId: product.id,
@@ -251,16 +294,16 @@ const Product = () => {
   };
 
   const handlePrevImage = () => {
-    const images = getProductImages();
+    const images = currentProductImages;
     setSelectedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    const images = getProductImages();
+    const images = currentProductImages;
     setSelectedImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  const images = getProductImages();
+  const images = currentProductImages;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFAF5]">
@@ -272,7 +315,7 @@ const Product = () => {
       <Header />
       <CartDrawer />
 
-      <main className="flex-1 pt-32 sm:pt-48 pb-32">
+      <main className="flex-1 pt-32 sm:pt-32 pb-32">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back button */}
           <button
@@ -289,99 +332,192 @@ const Product = () => {
             <div className="text-center py-20 font-heading text-2xl italic">Artifact lost in the archives.</div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
-              {/* Product Images */}
-              <div className="space-y-6">
-                {/* Main Image */}
-                <div className="relative aspect-[3/4] bg-white rounded-[3rem] overflow-hidden group shadow-2xl isolation-isolate">
-                  {isVideo(images[selectedImageIndex]) ? (
-                    <video
-                      src={images[selectedImageIndex]}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover mix-blend-multiply"
-                    />
-                  ) : (
-                    <img
-                      src={images[selectedImageIndex]}
-                      alt={product.name}
-                      className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-[2s]"
-                    />
-                  )}
-
+              <div className="space-y-12">
+                {/* Product Gallery */}
+                <div className="flex flex-col lg:flex-row gap-8 lg:h-[70vh]">
+                  {/* Thumbnail Gallery (Side on Desktop, Bottom on Mobile) */}
                   {images.length > 1 && (
-                    <>
-                      <button
-                        onClick={handlePrevImage}
-                        className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white shadow-xl"
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                      </button>
-                      <button
-                        onClick={handleNextImage}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white shadow-xl"
-                      >
-                        <ChevronRight className="w-6 h-6" />
-                      </button>
-                    </>
-                  )}
-
-                  {product.tag && (
-                    <div className="absolute top-8 left-8 z-20 animate-fade-in pointer-events-none">
-                      <span className="px-6 py-2.5 bg-white/80 backdrop-blur-xl text-primary text-[10px] font-black uppercase tracking-[0.4em] rounded-full shadow-[0_15px_40px_rgba(0,0,0,0.15)] border border-white/50">
-                        {product.tag}
-                      </span>
+                    <div className="order-2 lg:order-1 flex lg:flex-col gap-4 overflow-x-auto lg:overflow-y-auto py-2 lg:py-0 scrollbar-hide lg:w-24 shrink-0 no-scrollbar">
+                      {images.map((image, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedImageIndex(index)}
+                          className={`flex-shrink-0 w-20 h-24 rounded-[1.25rem] overflow-hidden border-2 border transition-all duration-500 shadow-sm ${selectedImageIndex === index
+                            ? 'border-accent shadow-2xl relative z-10'
+                            : 'border-transparent opacity-50 hover:opacity-100'
+                            }`}
+                        >
+                          {isVideo(image) ? (
+                            <div className="w-full h-full bg-accent/5 flex items-center justify-center relative">
+                              <div className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                                <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+                              </div>
+                              <video
+                                src={`${image}#t=0.001`}
+                                className="absolute inset-0 w-full h-full object-cover opacity-50"
+                                muted
+                                playsInline
+                                preload="metadata"
+                              />
+                            </div>
+                          ) : (
+                            <img
+                              src={image}
+                              alt={`${product.name} view ${index + 1}`}
+                              className="w-full h-full object-cover mix-blend-multiply"
+                            />
+                          )}
+                        </button>
+                      ))}
                     </div>
                   )}
 
-                  {/* Image counter */}
-                  {images.length > 1 && (
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 backdrop-blur-md bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl z-30 pointer-events-none border border-white/10">
-                      <span className="text-white mix-blend-difference flex items-center gap-1.5">
-                        <span className="opacity-50 text-[8px]">REGISTRY</span>
-                        {selectedImageIndex + 1} / {images.length}
-                      </span>
-                    </div>
-                  )}
+                  {/* Main Image Container */}
+                  <div className="order-1 lg:order-2 flex-1 relative aspect-[3/4] h-full bg-white rounded-[3rem] overflow-hidden group shadow-2xl isolation-isolate">
+                    {isVideo(images[selectedImageIndex]) ? (
+                      <video
+                        src={images[selectedImageIndex]}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover mix-blend-multiply"
+                      />
+                    ) : (
+                      <img
+                        src={images[selectedImageIndex]}
+                        alt={product.name}
+                        className="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-[2s]"
+                      />
+                    )}
+
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          onClick={handlePrevImage}
+                          className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white shadow-xl"
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <button
+                          onClick={handleNextImage}
+                          className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white shadow-xl"
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </button>
+                      </>
+                    )}
+
+                    {product.tag && (
+                      <div className="absolute top-8 left-8 z-20 animate-fade-in pointer-events-none">
+                        <span className="px-6 py-2.5 bg-white/80 backdrop-blur-xl text-primary text-[10px] font-black uppercase tracking-[0.4em] rounded-full shadow-[0_15px_40px_rgba(0,0,0,0.15)] border border-white/50">
+                          {product.tag}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Image counter */}
+                    {images.length > 1 && (
+                      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 backdrop-blur-md bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl z-30 pointer-events-none border border-white/10">
+                        <span className="text-white mix-blend-difference flex items-center gap-1.5">
+                          <span className="opacity-50 text-[8px]">REGISTRY</span>
+                          {selectedImageIndex + 1} / {images.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Thumbnail Gallery */}
-                {images.length > 1 && (
-                  <div className="flex gap-8 overflow-x-auto py-8 scrollbar-hide justify-center overflow-y-visible">
-                    {images.map((image, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImageIndex(index)}
-                        className={`flex-shrink-0 w-20 h-24 rounded-[1.25rem] overflow-hidden border-2 border transition-all duration-500 shadow-sm ${selectedImageIndex === index
-                          ? 'border-accent shadow-2xl relative z-10'
-                          : 'border-transparent opacity-50 hover:opacity-100'
-                          }`}
-                      >
-                        {isVideo(image) ? (
-                          <div className="w-full h-full bg-accent/5 flex items-center justify-center relative">
-                            <div className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                              <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
-                            </div>
-                            <video
-                              src={`${image}#t=0.001`}
-                              className="absolute inset-0 w-full h-full object-cover opacity-50"
-                              muted
-                              playsInline
-                              preload="metadata"
-                            />
-                          </div>
-                        ) : (
-                          <img
-                            src={image}
-                            alt={`${product.name} view ${index + 1}`}
-                            className="w-full h-full object-cover mix-blend-multiply"
-                          />
-                        )}
-                      </button>
-                    ))}
+                {/* Gallery Supplemental Info - Fills space under images */}
+                <div className="hidden lg:flex flex-col gap-12 pt-12 border-t border-accent/5">
+                  <div className="grid grid-cols-2 gap-12">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-accent/5 flex items-center justify-center text-accent">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em]">Origin Protocol</h4>
+                      </div>
+                      <p className="text-[11px] text-primary/50 leading-relaxed font-medium">
+                        Curated from the global archival network. Verified provenance from authorized boutique channels.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-accent/5 flex items-center justify-center text-accent">
+                          <Award className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em]">Atelier Standards</h4>
+                      </div>
+                      <p className="text-[11px] text-primary/50 leading-relaxed font-medium">
+                        Every artifact undergoes a rigorous 12-point authentication protocol before registry placement.
+                      </p>
+                    </div>
                   </div>
-                )}
+
+                  <div className="p-8 rounded-[2.5rem] bg-accent/[0.02] border border-accent/5 flex items-center justify-between group hover:bg-accent/[0.04] transition-all duration-700">
+                    <div className="flex items-center gap-6">
+                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-1">Dispatch Protocol</p>
+                        <p className="text-xs text-primary/40 italic">24-48 Hour Logistics Processing</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">ACTIVE REGISTRY</p>
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-tighter">Verified Artifact</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-12">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-accent/5 flex items-center justify-center text-accent">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em]">Care Instruction</h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-8 outline outline-1 outline-accent/5 p-8 rounded-[2rem] bg-white">
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-black uppercase text-primary/30 tracking-widest">Cleaning</p>
+                          <p className="text-[11px] text-primary/70 leading-relaxed font-medium">Professional archival cleaning recommended. Soft brush only.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-black uppercase text-primary/30 tracking-widest">Storage</p>
+                          <p className="text-[11px] text-primary/70 leading-relaxed font-medium">Keep in climate-controlled vault at 20°C / 45% humidity.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-accent/5 flex items-center justify-center text-accent">
+                          <Info className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em]">Technical Specifications</h4>
+                      </div>
+                      <div className="divide-y divide-accent/5 bg-accent/[0.01] rounded-[2rem] border border-accent/5 overflow-hidden">
+                        {[
+                          { label: 'Artifact ID', value: product.id.slice(0, 8).toUpperCase() },
+                          { label: 'Composition', value: product.category === 'Apparel' ? '100% Organic Silk/Cotton' : 'Archival Series A-1' },
+                          { label: 'Weight protocol', value: 'Lightweight Design' },
+                          { label: 'Durability', value: 'High Performance' }
+                        ].map((spec, i) => (
+                          <div key={i} className="flex justify-between p-4 px-8 group hover:bg-white transition-colors duration-500">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-primary/30">{spec.label}</span>
+                            <span className="text-[10px] font-bold text-primary/80 uppercase tracking-tighter">{spec.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Product Info */}
@@ -409,11 +545,34 @@ const Product = () => {
                   <Price amount={Number(product.price)} className="text-4xl font-black text-accent mb-12 tracking-tighter" />
 
                   {product.description && (
-                    <div className="mb-12">
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-4 border-b border-accent/10 pb-2">Archival Description</h3>
-                      <p className="text-xl text-primary/70 leading-relaxed font-medium italic">
-                        {product.description}
-                      </p>
+                    <div className="mb-16 space-y-12">
+                      <div className="relative">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mb-8 flex items-center gap-4">
+                          <span className="w-8 h-[1px] bg-accent/20"></span>
+                          Curatorial Narrative
+                        </h3>
+                        <div className="prose prose-stone max-w-none">
+                          <p className="text-2xl text-primary/80 leading-[1.6] font-medium italic first-letter:text-7xl first-letter:font-black first-letter:mr-3 first-letter:float-left first-letter:text-accent first-letter:mt-2 first-letter:font-heading">
+                            {product.description.split('\n')[0]}
+                          </p>
+                        </div>
+                      </div>
+
+                      {product.description.includes('\n') && (
+                        <div className="pt-8 border-t border-accent/5">
+                          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-8">Atelier Details</h4>
+                          <div className="grid grid-cols-1 gap-6">
+                            {product.description.split('\n').slice(1).filter(line => line.trim()).map((line, i) => (
+                              <div key={i} className="flex items-start gap-4 group">
+                                <div className="mt-2 w-1.5 h-1.5 rounded-full bg-accent/20 group-hover:bg-accent transition-colors" />
+                                <p className="text-sm text-primary/60 font-medium tracking-tight leading-relaxed group-hover:text-primary transition-colors">
+                                  {line.replace(/^[*-]\s*/, '').trim()}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -428,12 +587,7 @@ const Product = () => {
                         {product.sizes.map((size) => (
                           <button
                             key={size}
-                            onClick={() => {
-                              setSelectedSize(size);
-                              if (sizeStocks[size] < quantity) {
-                                setQuantity(Math.max(1, sizeStocks[size] || 0));
-                              }
-                            }}
+                            onClick={() => handleSizeChange(size)}
                             disabled={sizeStocks[size] === 0}
                             className={`min-w-[64px] h-14 px-6 rounded-2xl border-2 transition-all duration-300 font-black text-xs uppercase tracking-widest ${selectedSize === size
                               ? 'border-primary bg-primary text-white shadow-xl scale-105'
@@ -507,6 +661,7 @@ const Product = () => {
                         "w-20 h-20 rounded-[2rem] border-2 border-accent/10 flex items-center justify-center transition-all duration-500 shadow-lg active:scale-95",
                         isInWishlist(product.id) ? "bg-accent/5 border-accent" : "bg-white hover:bg-accent/5"
                       )}
+                      title="Toggle Wishlist"
                     >
                       <Heart
                         className={cn(
@@ -514,6 +669,14 @@ const Product = () => {
                           isInWishlist(product.id) ? "text-accent fill-accent scale-110" : "text-primary/40 hover:text-accent"
                         )}
                       />
+                    </button>
+
+                    <button
+                      onClick={handleShare}
+                      className="w-20 h-20 rounded-[2rem] border-2 border-accent/10 bg-white flex items-center justify-center transition-all duration-500 shadow-lg hover:bg-accent/5 active:scale-95 group/share"
+                      title="Share Product"
+                    >
+                      <Share2 className="w-6 h-6 text-primary/40 group-hover:text-accent transition-colors" />
                     </button>
                   </div>
                 </div>
@@ -564,7 +727,7 @@ const Product = () => {
                 {similarProducts.map((similarProduct) => (
                   <Link
                     key={similarProduct.id}
-                    to={`/product/${similarProduct.id}`}
+                    to={`/product/${slugify(similarProduct.name)}`}
                     className="group"
                   >
                     <div className="aspect-[3/4] bg-white rounded-[2.5rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-700">

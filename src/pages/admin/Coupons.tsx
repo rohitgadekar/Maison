@@ -280,7 +280,10 @@ const AdminCoupons = () => {
                     </div>
 
                     <form onSubmit={handleSaveCoupon} className="flex-1 overflow-hidden flex flex-col bg-white">
-                        <div className="p-10 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+                        <div
+                            data-lenis-prevent
+                            className="p-10 space-y-6 overflow-y-auto flex-1 custom-scrollbar"
+                        >
                             <div className="space-y-6 pb-40">
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="col-span-2 space-y-3">
@@ -448,7 +451,10 @@ const AdminCoupons = () => {
                                         </div>
 
                                         {isMemberSearchOpen && (
-                                            <div className="absolute top-full left-0 right-0 mt-4 bg-white rounded-[2.5rem] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.3)] p-6 z-50 border border-accent/5 animate-in slide-in-from-top-4 duration-500 max-h-[400px] flex flex-col">
+                                            <div
+                                                data-lenis-prevent
+                                                className="absolute top-full left-0 right-0 mt-4 bg-white rounded-[2.5rem] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.3)] p-6 z-50 border border-accent/5 animate-in slide-in-from-top-4 duration-500 max-h-[400px] flex flex-col"
+                                            >
                                                 <div className="relative mb-6">
                                                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                                                     <Input
@@ -547,7 +553,10 @@ const AdminCoupons = () => {
             {/* Archive Confirmation Dialog */}
             <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
                 <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
-                    <div className="p-10 text-center">
+                    <div
+                        data-lenis-prevent
+                        className="p-10 text-center"
+                    >
                         <div className="w-20 h-20 bg-amber-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-amber-500 animate-pulse">
                             <Archive className="w-10 h-10" />
                         </div>

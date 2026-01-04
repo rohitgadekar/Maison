@@ -467,7 +467,10 @@ export default function AdminCollections() {
             {/* Premium Overview Modal */}
             <Dialog open={!!viewingCollection} onOpenChange={() => setViewingCollection(null)}>
                 <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-[#FFFAF5]">
-                    <div className="flex flex-col lg:flex-row h-full max-h-[70vh]">
+                    <div
+                        data-lenis-prevent
+                        className="flex flex-col lg:flex-row h-full max-h-[70vh] overflow-y-auto"
+                    >
                         {/* Left: Info Section */}
                         <div className="lg:w-2/5 p-12 bg-white flex flex-col justify-between">
                             <div>
@@ -510,10 +513,11 @@ export default function AdminCollections() {
                         </div>
 
                         {/* Right: Product Grid */}
-                        <div className={cn(
-                            "lg:w-3/5 p-12 overflow-y-auto custom-scrollbar bg-accent/[0.02]",
-                            isOverviewLoading && "flex items-center justify-center min-h-[400px]"
-                        )}>
+                        <div
+                            className={cn(
+                                "lg:w-3/5 p-12 lg:overflow-y-auto custom-scrollbar bg-accent/[0.02]",
+                                isOverviewLoading && "flex items-center justify-center min-h-[400px]"
+                            )}>
                             {isOverviewLoading ? (
                                 <div className="scale-75 origin-center">
                                     <PremiumLoader message="Fetching Archive Content..." />
@@ -554,7 +558,10 @@ export default function AdminCollections() {
             {/* Premium Dissolution Confirmation */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
-                    <div className="p-10 text-center">
+                    <div
+                        data-lenis-prevent
+                        className="p-10 text-center"
+                    >
                         <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
                             <Trash2 className="w-10 h-10" />
                         </div>

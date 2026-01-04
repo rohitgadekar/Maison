@@ -236,7 +236,10 @@ const AdminShipping = () => {
 
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#111]/40 backdrop-blur-md">
-                    <div className="bg-white rounded-[3.5rem] p-12 max-w-md w-full shadow-2xl animate-fade-in">
+                    <div
+                        data-lenis-prevent
+                        className="bg-white rounded-[3.5rem] p-12 max-w-md w-full shadow-2xl animate-fade-in overflow-y-auto max-h-[90vh]"
+                    >
                         <h2 className="font-heading text-3xl font-black tracking-tighter mb-8 flex items-center gap-4">
                             <Globe className="w-8 h-8 text-accent" />
                             {editingProvider ? 'Edit Partner' : 'Partner Registry'}
@@ -298,7 +301,10 @@ const AdminShipping = () => {
             {/* Premium Dissolution Confirmation */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
-                    <div className="p-10 text-center">
+                    <div
+                        data-lenis-prevent
+                        className="p-10 text-center"
+                    >
                         <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
                             <Trash2 className="w-10 h-10" />
                         </div>

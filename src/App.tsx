@@ -30,6 +30,7 @@ import AdminCoupons from "./pages/admin/Coupons";
 import AdminPayments from "./pages/admin/Payments";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
+import { SmoothScroll } from "./components/SmoothScroll";
 
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { SiteSettingsProvider } from "@/context/SiteSettingsContext";
@@ -70,10 +71,11 @@ const App = () => {
                     <Toaster />
                     <BrowserRouter>
                       <ScrollToTop />
+                      <SmoothScroll />
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/shop" element={<Shop />} />
-                        <Route path="/product/:id" element={<Product />} />
+                        <Route path="/product/:slug" element={<Product />} />
                         <Route path="/wishlist" element={<Wishlist />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />

@@ -181,6 +181,12 @@ export function Footer({ className }: FooterProps) {
             <p className="text-accent text-[10px] font-black uppercase tracking-[0.4em] italic">
               Designed in the Atelier
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="w-4 h-px bg-white/10" />
+              <p className="text-white/20 text-[8px] font-black uppercase tracking-[0.3em]">
+                Engineered by <a href="https://eagles.rohitgadekar.dev" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-accent transition-colors cursor-pointer">Eagles Labs</a>
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-12">

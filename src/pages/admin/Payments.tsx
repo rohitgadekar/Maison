@@ -476,7 +476,10 @@ const Payments = () => {
             {/* Refund Confirmation Dialog */}
             <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
                 <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
-                    <div className="p-10 text-center">
+                    <div
+                        data-lenis-prevent
+                        className="p-10 text-center"
+                    >
                         <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-blue-500 animate-pulse">
                             <RotateCcw className="w-10 h-10" />
                         </div>

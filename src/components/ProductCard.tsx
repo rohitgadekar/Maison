@@ -3,11 +3,10 @@ import { useCart } from '@/context/CartContext';
 import { Plus, X, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, slugify } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useWishlist } from '@/context/WishlistContext';
 import { Price } from './Price';
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProductCardProps {
@@ -93,7 +92,7 @@ export function ProductCard({ product, index }: ProductCardProps) {
 
   return (
     <div className="group animate-fade-up" style={{ animationDelay: `${index * 100}ms` }}>
-      <Link to={`/product/${product.id}`} className="block">
+      <Link to={`/product/${slugify(product.name)}`} className="block">
         <div className="relative overflow-hidden rounded-[2rem] bg-white aspect-[3/4] mb-6 shadow-sm group-hover:shadow-xl transition-all duration-500">
           <img
             src={product.image}

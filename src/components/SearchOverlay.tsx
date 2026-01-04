@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, X, ArrowRight, Package, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { cn, slugify } from '@/lib/utils';
 import type { Product } from '@/data/products';
 
 interface SearchOverlayProps {
@@ -142,7 +142,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                                 {results.map((product) => (
                                     <Link
                                         key={product.id}
-                                        to={product.type === 'collection' ? `/shop?registry=${product.slug}` : `/product/${product.id}`}
+                                        to={product.type === 'collection' ? `/shop?registry=${product.slug}` : `/product/${slugify(product.name)}`}
                                         onClick={onClose}
                                         className="group flex items-center gap-6 p-6 rounded-[2rem] bg-white border border-accent/5 hover:shadow-2xl hover:shadow-accent/5 transition-all duration-500"
                                     >

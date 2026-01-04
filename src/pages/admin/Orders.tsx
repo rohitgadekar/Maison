@@ -555,7 +555,10 @@ const AdminOrders = () => {
         {/* Order Details Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl rounded-[2rem]">
-            <div className="p-6 sm:p-12 overflow-y-auto">
+            <div
+              data-lenis-prevent
+              className="p-6 sm:p-12 overflow-y-auto"
+            >
               <DialogHeader className="mb-8 sm:mb-12 border-b border-accent/5 pb-6 sm:pb-8 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Detailed Registry Exit</span>
@@ -761,7 +764,10 @@ const AdminOrders = () => {
         {/* Tracking Number Dialog */}
         <Dialog open={isTrackingDialogOpen} onOpenChange={setIsTrackingDialogOpen}>
           <DialogContent className="max-w-md rounded-[2rem] sm:rounded-[2rem] border-accent/10 bg-white p-0 overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
-            <div className="p-8 sm:p-12 overflow-y-auto">
+            <div
+              data-lenis-prevent
+              className="p-8 sm:p-12 overflow-y-auto"
+            >
               <DialogHeader className="mb-8">
                 <DialogTitle className="font-heading text-2xl sm:text-3xl font-black tracking-tighter flex items-center gap-4">
                   <Truck className="w-8 h-8 text-accent" />
@@ -820,7 +826,10 @@ const AdminOrders = () => {
         {/* Purge Confirmation Dialog */}
         <Dialog open={isPurgeDialogOpen} onOpenChange={setIsPurgeDialogOpen}>
           <DialogContent className="max-w-md rounded-[2.5rem] border-rose-500/20 bg-[#FFF5F5]/95 backdrop-blur-3xl p-0 shadow-[0_30px_60px_-15px_rgba(244,63,94,0.3)] overflow-hidden">
-            <div className="p-10 text-center">
+            <div
+              data-lenis-prevent
+              className="p-10 text-center"
+            >
               <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
                 <Trash2 className="w-8 h-8 text-rose-600" />
               </div>

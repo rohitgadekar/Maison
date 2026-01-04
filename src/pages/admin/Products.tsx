@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { slugify } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -465,7 +466,10 @@ const AdminProducts = () => {
       {/* YOUR ORIGINAL Add/Edit Dialog - UNCHANGED */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-3xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
-          <div className="max-h-[85vh] overflow-y-auto p-6 sm:p-12 scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20">
+          <div
+            data-lenis-prevent
+            className="max-h-[85vh] overflow-y-auto p-6 sm:p-12 scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20"
+          >
             <DialogHeader className="mb-10 text-center md:text-left">
               <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Archival Registry</span>
               <DialogTitle className="font-heading text-4xl font-bold tracking-tighter">
@@ -770,102 +774,108 @@ const AdminProducts = () => {
 
       {/* NEW: Product Overview Dialog - ADDED ONLY THIS PART */}
       <Dialog open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
-        <DialogContent className="max-w-4xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
+        <DialogContent className="max-w-5xl border-white/5 bg-[#0A0A0A] p-0 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden rounded-[3.5rem]">
           {selectedProduct && (
-            <div className="max-h-[85vh] overflow-y-auto p-8 sm:p-12 scrollbar-thin scrollbar-thumb-accent/10 hover:scrollbar-thumb-accent/20">
-              <DialogHeader className="mb-10 text-center md:text-left">
-                <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Artifact Overview</span>
-                <DialogTitle className="font-heading text-4xl font-bold tracking-tighter">
-                  {selectedProduct.name}
-                </DialogTitle>
-                <p className="text-lg italic text-primary/60 mt-2">
-                  # {selectedProduct.sku || selectedProduct.id.slice(0, 8).toUpperCase()} • {selectedProduct.category}
-                </p>
-              </DialogHeader>
-
-              {/* Images */}
-              {selectedProduct.images && selectedProduct.images.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                  <div className="md:col-span-2">
-                    <div className="aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-xl border border-accent/10">
-                      {isVideo(selectedProduct.images[0]) ? (
-                        <video
-                          src={selectedProduct.images[0]}
-                          className="w-full h-full object-cover"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : (
-                        <img
-                          src={selectedProduct.images[0]}
-                          alt={selectedProduct.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+            <div
+              data-lenis-prevent
+              className="max-h-[90vh] overflow-y-auto p-10 sm:p-16 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20"
+            >
+              <DialogHeader className="mb-12">
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] italic">Artifact Dossier</span>
+                      <div className="h-px flex-1 bg-white/5" />
+                    </div>
+                    <DialogTitle className="font-heading text-3xl sm:text-5xl font-bold tracking-[ -0.04em] leading-[0.9] text-white">
+                      {selectedProduct.name}
+                    </DialogTitle>
+                    <div className="flex items-center gap-6 text-white/30">
+                      <span className="text-xs font-mono tracking-widest bg-white/[0.03] px-4 py-1.5 rounded-full border border-white/5">REF: {selectedProduct.sku || selectedProduct.id.slice(0, 8).toUpperCase()}</span>
+                      <div className="w-1 h-1 rounded-full bg-accent/30" />
+                      <span className="text-xs font-black uppercase tracking-[0.1em] italic text-accent/60">{selectedProduct.category}</span>
                     </div>
                   </div>
-                  {selectedProduct.images.length > 1 && (
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedProduct.images.slice(1).map((img, idx) => (
-                        <div key={idx} className="aspect-square rounded-2xl overflow-hidden shadow-md border border-accent/5">
-                          {isVideo(img) ? (
-                            <video
-                              src={img}
-                              className="w-full h-full object-cover"
-                              muted
-                              loop
-                              playsInline
-                            />
-                          ) : (
-                            <img src={img} alt={`Perspective ${idx + 2}`} className="w-full h-full object-cover" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex shrink-0 gap-3">
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-white/10 bg-transparent text-white hover:bg-white hover:text-black h-14 px-10 text-[10px] font-black uppercase tracking-widest transition-all duration-500"
+                      onClick={() => {
+                        setIsOverviewOpen(false);
+                        handleEdit(selectedProduct);
+                      }}
+                    >
+                      Refine Artifact
+                    </Button>
+                    <a
+                      href={`/product/${slugify(selectedProduct.name)}`}
+                      target="_blank"
+                      className="flex items-center justify-center rounded-full bg-accent text-white h-14 px-10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-500 shadow-xl shadow-accent/10"
+                    >
+                      Showroom View
+                    </a>
+                  </div>
                 </div>
-              )}
+              </DialogHeader>
 
-              {/* Details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-accent/5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2">Contribution Value</p>
-                  <p className="text-3xl font-bold text-primary">${Number(selectedProduct.price).toLocaleString()}</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-accent/5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2">Available Units</p>
-                  <p className="text-3xl font-bold text-primary">{selectedProduct.inventory}</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-accent/5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2">Status</p>
-                  <p className={`text-2xl font-bold ${selectedProduct.is_active ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {selectedProduct.is_active ? 'Active' : 'Inactive'}
+              {/* Compact Overview Gallery Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-12">
+                {(selectedProduct.images || [selectedProduct.image_url]).slice(0, 6).map((img, idx) => (
+                  <div key={idx} className="aspect-square bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 group/img">
+                    {isVideo(img) ? (
+                      <video src={img || ''} className="w-full h-full object-cover" muted loop playsInline />
+                    ) : (
+                      <img src={img || ''} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover/img:scale-110" />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Core Analytics Matrix */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16">
+                <div className="bg-white/[0.03] p-8 rounded-[3rem] border border-white/5 shadow-sm hover:bg-white/[0.05] transition-all group/card overflow-hidden">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 group-hover/card:text-accent transition-colors">Asset Valuation</p>
+                  <p className="text-3xl font-black tracking-tighter text-white truncate">
+                    <Price amount={selectedProduct.price} />
                   </p>
+                </div>
+                <div className="bg-white/[0.03] p-8 rounded-[3rem] border border-white/5 shadow-sm hover:bg-white/[0.05] transition-all group/card overflow-hidden">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 group-hover/card:text-accent transition-colors">Registry Designation</p>
+                  <p className="text-xl font-black tracking-tighter text-accent uppercase italic truncate">{selectedProduct.tag || 'Standard'}</p>
+                </div>
+                <div className="bg-white/[0.03] p-8 rounded-[3rem] border border-white/5 shadow-sm hover:bg-white/[0.05] transition-all group/card overflow-hidden">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 group-hover/card:text-accent transition-colors">Protocol Status</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${selectedProduct.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                    <p className={`text-2xl font-black tracking-tighter uppercase ${selectedProduct.is_active ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {selectedProduct.is_active ? 'Live' : 'Private'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
+              {/* Dimensional Metrics */}
               {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
-                <div className="mb-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">Architectural Dimensions</p>
-                      <p className="text-[9px] text-accent italic">Inventory distribution across size metrics</p>
+                <div className="mb-16 p-10 bg-white/[0.02] rounded-[3.5rem] border border-white/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Architectural Matrix</p>
+                      <h3 className="text-3xl font-bold tracking-tighter text-white">
+                        Inventory Distribution <span className="text-accent underline decoration-accent/20 underline-offset-8">({selectedProduct.inventory} total)</span>.
+                      </h3>
                     </div>
                     <SizeChart data={selectedProduct.size_chart_data || selectedProduct.size_chart} />
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-6">
                     {selectedProduct.sizes.map((size) => (
-                      <div key={size} className="bg-white p-5 rounded-[2rem] border border-accent/5 shadow-sm hover:border-accent/20 transition-colors group/size">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-primary/30 mb-2 group-hover/size:text-accent transition-colors">{size}</p>
-                        <p className="text-2xl font-bold text-primary flex items-baseline gap-1">
+                      <div key={size} className="bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5 shadow-sm hover:bg-white/[0.08] transition-all duration-500 group/size hover:-translate-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-4 group-hover/size:text-accent transition-colors">{size}</p>
+                        <p className="text-4xl font-black tracking-tighter text-white flex items-baseline gap-1">
                           {selectedProductStocks[size] ?? 0}
-                          <span className="text-[10px] font-normal text-primary/40 uppercase tracking-tighter">Units</span>
                         </p>
-                        <div className="w-full h-1 bg-accent/5 rounded-full mt-3 overflow-hidden">
+                        <div className="w-full h-1.5 bg-white/5 rounded-full mt-6 overflow-hidden">
                           <div
-                            className="h-full bg-accent transition-all duration-1000"
+                            className="h-full bg-accent transition-all duration-1000 ease-out"
                             style={{ width: `${Math.min(((selectedProductStocks[size] ?? 0) / 50) * 100, 100)}%` }}
                           />
                         </div>
@@ -875,10 +885,16 @@ const AdminProducts = () => {
                 </div>
               )}
 
+              {/* Archival Abstract */}
               {selectedProduct.description && (
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-4">Archival Abstract</p>
-                  <p className="text-lg leading-relaxed text-primary/80 italic">{selectedProduct.description}</p>
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-4 mb-8">
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10">Archival Narrative</span>
+                    <div className="h-px flex-1 bg-white/5" />
+                  </div>
+                  <p className="text-2xl font-medium leading-relaxed text-white/60 italic font-serif">
+                    {selectedProduct.description}
+                  </p>
                 </div>
               )}
             </div>
@@ -889,7 +905,10 @@ const AdminProducts = () => {
       {/* Premium Dissolution Confirmation */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="max-w-md p-0 overflow-hidden rounded-[3rem] border-none shadow-[0_50px_100px_rgba(0,0,0,0.2)] bg-white">
-          <div className="p-10 text-center">
+          <div
+            data-lenis-prevent
+            className="p-10 text-center"
+          >
             <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-rose-500 animate-pulse">
               <Trash2 className="w-10 h-10" />
             </div>
