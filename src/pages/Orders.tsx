@@ -33,6 +33,7 @@ import { SEO } from '@/components/SEO';
 import { Price } from '@/components/Price';
 import { calculateOrderTotals } from '@/lib/calculations';
 import { Invoice } from '@/components/Invoice';
+import { sendOrderNotification } from '@/lib/notifications';
 
 interface Order {
   id: string;
@@ -305,6 +306,17 @@ const Orders = () => {
 
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
       toast.success('Order cancelled and inventory restoration protocol initiated');
+
+      // Trigger dissolution notification email
+      try {
+        const items = orderItems[orderId] || [];
+        const orderData = data[0];
+        if (orderData && items.length > 0) {
+          sendOrderNotification(orderData, items, 'cancellation');
+        }
+      } catch (err) {
+        console.error('Failed to trigger cancellation email:', err);
+      }
     } catch (err: any) {
       console.error('Unexpected error during cancellation:', err);
       toast.error('An unexpected error occurred');

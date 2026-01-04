@@ -125,9 +125,6 @@
   body {
     @apply bg-background text-foreground antialiased select-none;
     font-family: 'Inter', sans-serif;
-    /* Prevent Radix-ui/shadcn from hiding scrollbar and causing layout shifts */
-    overflow-y: scroll !important;
-    padding-right: 0px !important;
     display: flex;
     flex-direction: column;
   }
@@ -141,10 +138,8 @@
     pointer-events: none;
   }
 
-  /* Specific override for Radix UI scroll-lock mechanism */
+  /* Radix UI scroll-lock mechanism - removing overrides to allow standard behavior */
   [data-radix-scroll-lock] {
-    overflow: auto !important;
-    padding-right: 0px !important;
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -23,6 +23,7 @@ import { SEO } from '@/components/SEO';
 import { Price } from '@/components/Price';
 import { calculateOrderTotals, roundPrice } from '@/lib/calculations';
 import { useSiteSettings } from '@/context/SiteSettingsContext';
+import { sendOrderNotification } from '@/lib/notifications';
 // Cashfree is loaded via CDN in index.html to avoid bundling issues
 declare global {
   interface Window {
@@ -474,6 +475,10 @@ const Checkout = () => {
         }
 
         toast.success('Concierge delivery confirmed. Acquisition registered.');
+
+        // Trigger acquisition confirmation email
+        sendOrderNotification(order, items, 'confirmation');
+
         navigate(`/orders?order_id=${(order as any).id}`);
         return;
       }
@@ -514,6 +519,10 @@ const Checkout = () => {
         handler: function (response: any) {
           console.log('Razorpay payment successful:', response);
           toast.success('Payment authorized. Ritual complete.');
+
+          // Trigger acquisition confirmation email after successful payment
+          sendOrderNotification(order, items, 'confirmation');
+
           navigate(`/orders?order_id=${(order as any).id}`);
         },
         prefill: {
@@ -977,7 +986,10 @@ const Checkout = () => {
               <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-accent/5 sticky top-32">
                 <h2 className="font-heading text-3xl font-bold mb-12 tracking-tight uppercase text-center italic">The <span className="text-accent not-italic">Archive</span> List</h2>
 
-                <div className="space-y-8 mb-12 max-h-[400px] overflow-y-auto pr-4 scrollbar-hide">
+                <div
+                  data-lenis-prevent
+                  className="space-y-8 mb-12 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar"
+                >
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-8 group">
                       <div className="w-24 h-32 rounded-2xl overflow-hidden bg-accent/5 flex-shrink-0 relative">
@@ -1140,28 +1152,36 @@ const Checkout = () => {
 
       {/* Available Coupons Dialog */}
       <Dialog open={isCouponsDialogOpen} onOpenChange={setIsCouponsDialogOpen}>
-        <DialogContent className="max-w-2xl rounded-[2rem] border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-3xl p-0 overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.1)] border">
-          <div className="p-6 sm:p-14 relative">
-            {/* Background Decorations */}
-            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none hidden sm:block">
-              <Ticket className="w-64 h-64 text-accent rotate-12" />
-            </div>
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl w-full rounded-[2rem] sm:rounded-[2.5rem] border-white/5 bg-[#0A0A0A]/95 backdrop-blur-3xl p-0 overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border max-h-[90vh] flex flex-col">
+          <div className="p-6 sm:p-12 md:p-16 relative flex flex-col h-full overflow-hidden">
+            {/* Ambient Glow */}
+            <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-30" />
+            <div className="absolute -top-24 -left-24 w-64 h-64 bg-accent/10 rounded-full blur-[100px]" />
 
-            <DialogHeader className="mb-8 sm:mb-12 relative z-10">
-              <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic text-center sm:text-left">Curated Ledger</span>
-              <DialogTitle className="font-heading text-3xl sm:text-5xl font-black tracking-tighter leading-tight text-center sm:text-left">
-                Available <span className="italic font-light text-accent">Privileges.</span>
-              </DialogTitle>
-              <p className="text-[10px] sm:text-[11px] text-primary/30 font-medium italic mt-4 sm:mt-2 max-w-sm text-center sm:text-left mx-auto sm:mx-0">
-                Authenticating your archival status reveals exclusive valuation incentives. Select a privilege to evolve your acquisition.
-              </p>
+            <DialogHeader className="mb-8 sm:mb-12 shrink-0 relative z-10">
+              <div className="flex flex-col items-center sm:items-start space-y-3 sm:space-y-4">
+                <div className="px-3 sm:py-1.5 py-1 px-4 rounded-full border border-accent/20 bg-accent/5">
+                  <span className="text-accent text-[7px] sm:text-[8px] font-black uppercase tracking-[0.6em] block italic">Vault Clearance • Protocol 4.2</span>
+                </div>
+                <div>
+                  <DialogTitle className="font-heading text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-none text-white mb-2 sm:mb-4">
+                    Member <span className="italic font-light text-accent/80">Incentives.</span>
+                  </DialogTitle>
+                  <p className="text-[9px] sm:text-[11px] text-white/30 font-medium italic leading-relaxed max-w-sm text-center sm:text-left mx-auto sm:mx-0">
+                    The archival system has calculated your membership tier. Authorized valuation adjustments for this specific protocol.
+                  </p>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-4 max-h-[300px] py-2 overflow-y-auto pr-2 custom-scrollbar">
+            <div
+              data-lenis-prevent
+              className="space-y-4 sm:space-y-6 overflow-y-auto pr-2 sm:pr-6 custom-scrollbar scroll-smooth flex-1 min-h-0"
+            >
               {availableCoupons.length === 0 ? (
-                <div className="text-center py-20 bg-accent/[0.02] rounded-[2.5rem] border border-dashed border-accent/10">
-                  <Ticket className="w-16 h-16 mx-auto text-accent/10 mb-6 animate-pulse" />
-                  <p className="text-[12px] font-black uppercase tracking-[0.4em] text-primary/30 italic">Registry contains no active archival keys</p>
+                <div className="text-center py-16 sm:py-24 bg-white/[0.02] rounded-[2rem] sm:rounded-[3rem] border border-dashed border-white/10">
+                  <Ticket className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-accent/20 mb-4 sm:mb-6 animate-pulse" />
+                  <p className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.5em] text-white/20 italic">No authorized keys detected in vault</p>
                 </div>
               ) : (
                 ([...availableCoupons]
@@ -1181,79 +1201,79 @@ const Checkout = () => {
                       <div
                         key={coupon.id}
                         onClick={() => canUse && handleSelectCoupon(coupon.code)}
-                        className={`group relative p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border transition-all duration-700 ${canUse
-                          ? 'bg-white border-accent/10 hover:border-accent hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] cursor-pointer hover:-translate-y-1'
-                          : isFullyUtilized
-                            ? 'bg-white border-rose-500/20 cursor-not-allowed'
-                            : 'bg-accent/[0.03] border-transparent opacity-50 cursor-not-allowed grayscale'
+                        className={`group relative flex h-32 sm:h-40 transition-all duration-700 rounded-2xl sm:rounded-[2rem] overflow-hidden border ${canUse
+                          ? 'bg-white/[0.03] border-white/10 hover:border-accent/40 hover:bg-white/[0.05] cursor-pointer'
+                          : 'bg-white/[0.01] border-white/[0.02] opacity-40 grayscale cursor-not-allowed'
                           }`}
                       >
-                        {/* Status Badge */}
-                        <div className="absolute top-4 sm:top-6 right-6 sm:right-8">
-                          {isFullyUtilized ? (
-                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-rose-500 bg-rose-500/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-rose-500/10">Fully Utilized</span>
-                          ) : isEligible ? (
-                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-accent bg-accent/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/10">Active</span>
-                          ) : (
-                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-primary/30 bg-primary/5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-primary/5">Restricted</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 ${canUse ? 'bg-accent/10 text-accent group-hover:rotate-12' : 'bg-primary/5 text-primary/20'}`}>
-                            <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </div>
-                          <div>
-                            <span className={`text-base sm:text-lg font-black uppercase tracking-[0.2em] block leading-none mb-1 ${canUse ? 'text-primary' : 'text-primary/40'}`}>
-                              {coupon.code}
-                            </span>
-                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-primary/20 italic">Archival Privilege Code</span>
-                          </div>
-                        </div>
-
-                        <p className="text-[10px] sm:text-[11px] font-medium italic text-primary/50 mb-6 sm:mb-8 leading-relaxed max-w-[85%] sm:max-w-[80%]">
-                          {coupon.description}
-                        </p>
-
-                        <div className={`p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors duration-500 mb-4 ${canUse ? 'bg-accent/[0.03]' : 'bg-transparent border border-primary/[0.02]'}`}>
-                          <div className="flex flex-col">
-                            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Benefit Tier</span>
-                            <span className="text-[12px] sm:text-sm font-black text-accent tracking-tighter uppercase text-left">
-                              {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% Valuation Drop` :
-                                coupon.discount_type === 'free_delivery' ? 'Complimentary Logistics' :
-                                  <div className="flex items-center gap-1"><Price amount={Number(coupon.discount_value)} /> Direct Credit</div>}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.3em] text-primary/20 mb-1.5">Acquisition Threshold</span>
-                            <span className={`text-[9px] sm:text-[10px] font-black ${canUse ? 'text-primary/60' : 'text-rose-500/80'}`}>
-                              <Price amount={Number(coupon.min_order_amount)} />
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Usage Statistics */}
-                        <div className={`px-4 py-3 rounded-xl border transition-all duration-500 ${isFullyUtilized
-                          ? 'bg-rose-500/5 border-rose-500/10'
-                          : 'bg-primary/[0.02] border-primary/[0.05]'
-                          }`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.3em] text-primary/30">Utilization Status</span>
-                            <span className={`text-[8px] sm:text-[9px] font-black ${isFullyUtilized ? 'text-rose-500' : 'text-primary/50'
-                              }`}>
-                              {coupon.usage_limit
-                                ? `${coupon.usage_count || 0} of ${coupon.usage_limit} ${(coupon.usage_count || 0) === 1 ? 'use' : 'uses'}`
-                                : `${coupon.usage_count || 0} ${(coupon.usage_count || 0) === 1 ? 'use' : 'uses'} • Unlimited`
-                              }
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Hover Overlay Icon */}
+                        {/* Status Glowing Indicator */}
                         {canUse && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none scale-50 group-hover:scale-100">
-                            <div className="w-20 h-20 bg-accent/5 backdrop-blur-md rounded-full flex items-center justify-center border border-accent/10">
-                              <Check className="w-8 h-8 text-accent stroke-[3px]" />
+                          <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-50 shadow-[0_0_20px_rgba(200,80,50,0.5)]" />
+                        )}
+
+                        {/* Left Stub - The Benefit */}
+                        <div className={`w-24 sm:w-36 flex flex-col items-center justify-center p-4 sm:p-6 relative ${canUse ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
+                          <div className="absolute -top-4 -right-4 w-6 sm:w-8 h-6 sm:h-8 bg-[#0A0A0A] rounded-full z-10 border border-white/5" />
+                          <div className="absolute -bottom-4 -right-4 w-6 sm:w-8 h-6 sm:h-8 bg-[#0A0A0A] rounded-full z-10 border border-white/5" />
+
+                          <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.4em] text-white/20 mb-2 sm:mb-3 italic">Valuation</span>
+                          <div className="text-center">
+                            {coupon.discount_type === 'percentage' ? (
+                              <p className="text-2xl sm:text-4xl font-black text-white group-hover:text-accent transition-colors duration-500 tracking-tighter leading-none">{coupon.discount_value}%</p>
+                            ) : coupon.discount_type === 'free_delivery' ? (
+                              <Truck className="w-8 h-8 sm:w-10 sm:h-10 text-white group-hover:text-accent transition-colors duration-500 mx-auto" />
+                            ) : (
+                              <p className="text-lg sm:text-2xl font-black text-white group-hover:text-accent transition-colors duration-500 tracking-tighter leading-none">${Math.round(Number(coupon.discount_value))}</p>
+                            )}
+                            <p className="text-[5px] sm:text-[6px] font-bold uppercase tracking-[0.2em] text-accent mt-2 sm:mt-3">Reduction</p>
+                          </div>
+
+                          {/* Fine Dashed Line */}
+                          <div className="absolute right-0 top-6 sm:top-8 bottom-6 sm:bottom-8 border-r border-dashed border-white/10" />
+                        </div>
+
+                        {/* Right Body - Detailed Disclosure */}
+                        <div className="flex-1 p-4 sm:p-8 flex flex-col justify-between min-w-0">
+                          <div className="flex justify-between items-start gap-2 sm:gap-4">
+                            <div className="space-y-1 min-w-0">
+                              <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.5em] text-accent italic">Registry Identity</span>
+                              <h3 className="text-lg sm:text-2xl font-black tracking-[0.1em] text-white uppercase leading-none truncate">{coupon.code}</h3>
+                            </div>
+                            <div className={`shrink-0 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-widest border transition-all duration-500 ${isFullyUtilized ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
+                              isEligible ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 group-hover:bg-accent/10 group-hover:border-accent/20 group-hover:text-accent' :
+                                'bg-white/5 border-white/10 text-white/30'
+                              }`}>
+                              {isFullyUtilized ? 'Exhausted' : isEligible ? 'Active' : 'Locked'}
+                            </div>
+                          </div>
+
+                          <p className="text-[9px] sm:text-[11px] font-medium italic text-white/40 line-clamp-1 sm:line-clamp-2 pr-6 sm:pr-12 leading-relaxed">
+                            {coupon.description || 'Verified archival membership privilege.'}
+                          </p>
+
+                          <div className="flex items-center justify-between pt-3 sm:pt-6 border-t border-white/5">
+                            <div className="flex items-center gap-3 sm:gap-6">
+                              <div className="flex flex-col">
+                                <span className="text-[5px] sm:text-[6px] font-black uppercase tracking-[0.4em] text-white/20 mb-0.5 sm:mb-1">Utilization</span>
+                                <span className="text-[8px] sm:text-[10px] font-black text-white/60 tracking-tighter">
+                                  {coupon.usage_count || 0} / {coupon.usage_limit || '∞'} UNITS
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[5px] sm:text-[6px] font-black uppercase tracking-[0.4em] text-white/20 mb-0.5 sm:mb-1">Requirement</span>
+                              <span className={`text-[9px] sm:text-[11px] font-black ${isEligible ? 'text-white/80' : 'text-rose-500/80'}`}>
+                                <Price amount={Number(coupon.min_order_amount)} />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Luxury Select Indicator */}
+                        {canUse && (
+                          <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                            <div className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-[0_0_30px_rgba(200,80,50,0.6)] border border-white/20">
+                              <Check className="w-6 h-6 stroke-[3px]" />
                             </div>
                           </div>
                         )}
@@ -1263,13 +1283,13 @@ const Checkout = () => {
               )}
             </div>
 
-            <div className="mt-12 relative z-10">
+            <div className="mt-8 sm:mt-12 shrink-0 group/close">
               <Button
                 variant="outline"
                 onClick={() => setIsCouponsDialogOpen(false)}
-                className="w-full h-16 rounded-[1.5rem] border-accent/10 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-black hover:text-white transition-all shadow-sm"
+                className="w-full h-14 sm:h-18 rounded-xl sm:rounded-2xl border-white/10 bg-white/[0.02] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.6em] text-white/40 hover:bg-white hover:text-black hover:border-white transition-all duration-700 shadow-2xl relative overflow-hidden"
               >
-                Return to Registry
+                <span className="relative z-10 italic">Seal Vault</span>
               </Button>
             </div>
           </div>

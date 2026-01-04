@@ -134,7 +134,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
     const formatPrice = (amount: number, currency: Currency = userCurrency): string => {
         const symbol = SUPPORTED_CURRENCIES.find(c => c.code === currency)?.symbol || '$';
-        return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${symbol}${Math.round(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     };
 
     return (

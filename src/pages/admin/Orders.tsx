@@ -32,6 +32,7 @@ import { Invoice } from '@/components/Invoice';
 import { Price } from '@/components/Price';
 import { useCurrency } from '@/context/CurrencyContext';
 import { cn } from '@/lib/utils';
+import { sendOrderNotification } from '@/lib/notifications';
 
 interface Order {
   id: string;
@@ -271,6 +272,28 @@ const AdminOrders = () => {
             });
           console.log('POD payment marked as refunded for cancelled order:', orderId);
         }
+      }
+
+      // Trigger dissolution notification email
+      try {
+        // Fetch order details for the email
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+
+        // Fetch items for the email
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('*, products(name)')
+          .eq('order_id', orderId);
+
+        if (orderData && items) {
+          sendOrderNotification(orderData, items, 'cancellation');
+        }
+      } catch (err) {
+        console.error('Failed to trigger cancellation email:', err);
       }
     }
 

@@ -1,5 +1,5 @@
 export const roundPrice = (price: number) => {
-  return Math.round(price * 100) / 100;
+  return Math.round(price);
 };
 
 export const calculateOrderTotals = (
