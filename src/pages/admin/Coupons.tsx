@@ -19,12 +19,14 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const AdminCoupons = () => {
+    const { storeCurrency, formatPrice } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -221,7 +223,7 @@ const AdminCoupons = () => {
                             </div>
 
                             <div className="relative z-10">
-                                <h4 className="font-heading text-2xl font-black tracking-tighter mb-1 uppercase italic">{coupon.code}</h4>
+                                <h4 className="font-mono text-2xl font-bold tracking-wider mb-1 uppercase">{coupon.code}</h4>
                                 <p className="text-xs text-primary/40 font-medium italic mb-6 leading-relaxed line-clamp-2">{coupon.description || 'No detailed encryption provided.'}</p>
 
                                 <div className="pt-6 border-t border-accent/5 flex flex-wrap items-end justify-between gap-4">
@@ -230,7 +232,7 @@ const AdminCoupons = () => {
                                         <p className="font-bold text-lg">
                                             {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` :
                                                 coupon.discount_type === 'free_delivery' ? 'FREESHIP' :
-                                                    `$${coupon.discount_value} OFF`}
+                                                    `${formatPrice(coupon.discount_value, storeCurrency)} OFF`}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -253,7 +255,7 @@ const AdminCoupons = () => {
                                     )}
                                     {coupon.min_order_amount > 0 && (
                                         <span className="text-[7px] font-black uppercase tracking-[0.2em] bg-primary/5 text-primary/40 px-3 py-1.5 rounded-full italic">
-                                            Threshold: ${coupon.min_order_amount}+
+                                            Threshold: {formatPrice(coupon.min_order_amount, storeCurrency)}+
                                         </span>
                                     )}
                                 </div>
@@ -288,7 +290,7 @@ const AdminCoupons = () => {
                                             onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
                                             required
                                             placeholder="MAISON2025"
-                                            className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-black"
+                                            className="h-14 bg-accent/5 border-none rounded-2xl px-6 focus:ring-accent focus:bg-white transition-all font-mono font-bold tracking-wider uppercase text-lg"
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -336,7 +338,7 @@ const AdminCoupons = () => {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-3">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Valuation Amount</Label>
+                                        <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Valuation Amount ({storeCurrency})</Label>
                                         <Input
                                             type="number"
                                             value={couponForm.discount_value}
@@ -346,7 +348,7 @@ const AdminCoupons = () => {
                                         />
                                     </div>
                                     <div className="space-y-3">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Min order threshold</Label>
+                                        <Label className="text-[10px] uppercase font-black tracking-widest text-accent ml-2">Min order threshold ({storeCurrency})</Label>
                                         <Input
                                             type="number"
                                             value={couponForm.min_order_amount}

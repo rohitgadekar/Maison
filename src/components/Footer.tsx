@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ShieldCheck, Lock, BadgeCheck } from 'lucide-react';
 
 interface Collection {
   id: string;
@@ -61,6 +62,39 @@ export function Footer({ className }: FooterProps) {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Trust Markers */}
+            <div className="flex flex-wrap gap-8 pt-6">
+              <div className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-accent/30 transition-colors">
+                  <Lock className="w-4 h-4 text-accent/60 group-hover:text-accent transition-colors" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-accent/60 transition-colors">Secure Payment</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.1em] text-white/60">SSL Encrypted</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-accent/30 transition-colors">
+                  <BadgeCheck className="w-4 h-4 text-accent/60 group-hover:text-accent transition-colors" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-accent/60 transition-colors">Authenticity</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.1em] text-white/60">Verified Artifact</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-accent/30 transition-colors">
+                  <ShieldCheck className="w-4 h-4 text-accent/60 group-hover:text-accent transition-colors" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-accent/60 transition-colors">Protection</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.1em] text-white/60">DMCA Registered</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -142,7 +176,7 @@ export function Footer({ className }: FooterProps) {
         <div className="pt-16 border-t border-white/5 flex flex-col lg:flex-row justify-between items-center gap-12">
           <div className="flex flex-col items-center lg:items-start gap-4">
             <p className="text-white text-[11px] font-black uppercase tracking-[0.5em]">
-              © 2024 Maison Archive. Crafted for Longevity.
+              © {new Date().getFullYear()} Maison Archive. Crafted for Longevity.
             </p>
             <p className="text-accent text-[10px] font-black uppercase tracking-[0.4em] italic">
               Designed in the Atelier

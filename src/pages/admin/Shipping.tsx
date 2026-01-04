@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Truck, Plus, Trash2, ShieldCheck, Globe, Edit2 } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { useCurrency } from '@/context/CurrencyContext';
 import {
     Dialog,
     DialogContent,
@@ -20,6 +21,7 @@ interface ShippingProvider {
 }
 
 const AdminShipping = () => {
+    const { storeCurrency, formatPrice } = useCurrency();
     const [providers, setProviders] = useState<ShippingProvider[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -162,56 +164,69 @@ const AdminShipping = () => {
                 {providers.map((provider) => (
                     <div
                         key={provider.id}
-                        className={`bg-white border rounded-[3rem] p-10 shadow-sm transition-all duration-700 group hover:shadow-2xl ${provider.is_active ? 'border-accent/10' : 'border-dashed border-primary/10 opacity-60'
+                        className={`bg-white border rounded-[2.5rem] p-8 shadow-sm transition-all duration-700 group hover:shadow-2xl flex flex-col ${provider.is_active ? 'border-accent/10' : 'border-dashed border-primary/10 opacity-70'
                             }`}
                     >
-                        <div className="flex justify-between items-start mb-8">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${provider.is_active ? 'bg-accent/5 text-accent' : 'bg-primary/5 text-primary/30'
-                                }`}>
-                                <Truck className="w-7 h-7" />
+                        <div className="flex justify-between items-center mb-6">
+                            {/* Prominent Logo Area */}
+                            <div className="relative">
+                                <div className={`w-16 h-16 rounded-[1.75rem] flex items-center justify-center transition-all duration-700 group-hover:scale-110 group-hover:rotate-6 ${provider.is_active ? 'bg-accent/5 text-accent shadow-sm' : 'bg-primary/5 text-primary/20'
+                                    }`}>
+                                    <Truck className="w-8 h-8" />
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-white shadow-md flex items-center justify-center border border-accent/5">
+                                    <Globe className="w-3 h-3 text-accent/40" />
+                                </div>
                             </div>
-                            <div className="flex gap-2">
+
+                            {/* Functional Actions - Spaced Out */}
+                            <div className="flex items-center gap-2">
                                 <Button
-                                    variant="ghost"
-                                    size="sm"
+                                    variant="outline"
+                                    size="icon"
                                     onClick={() => handleOpenEdit(provider)}
-                                    className="rounded-full hover:bg-accent/5 transition-opacity"
+                                    className="w-10 h-10 rounded-xl border-accent/5 bg-white shadow-sm hover:bg-accent hover:text-white transition-all duration-500"
                                 >
-                                    <Edit2 className="w-4 h-4 text-primary/30 group-hover:text-accent" />
+                                    <Edit2 className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleToggleStatus(provider.id, provider.is_active)}
-                                    className="rounded-full hover:bg-accent/5 text-[8px] font-black uppercase tracking-widest text-primary/30 hover:text-accent"
-                                >
-                                    {provider.is_active ? 'Deactivate' : 'Activate'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
+                                    variant="outline"
+                                    size="icon"
                                     onClick={(e) => handleDeleteClick(provider.id, e)}
-                                    className="rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-500  group-hover:opacity-100 transition-opacity"
+                                    className="w-10 h-10 rounded-xl border-accent/5 bg-white shadow-sm hover:bg-rose-500 hover:text-white transition-all duration-500"
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
                         </div>
 
-                        <h3 className="font-heading text-2xl font-black mb-1 text-primary">{provider.name}</h3>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/40 italic mb-8">{provider.delivery_estimate}</p>
+                        <div>
+                            <h3 className="font-heading text-2xl font-black mb-1 tracking-tighter text-primary">
+                                {provider.name}
+                            </h3>
+                            <div className="flex items-center gap-2 mb-8">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-accent/40 italic">{provider.delivery_estimate}</span>
+                                <div className="w-1 h-1 rounded-full bg-accent/20" />
+                                <button
+                                    onClick={() => handleToggleStatus(provider.id, provider.is_active)}
+                                    className={`text-[8px] font-black uppercase tracking-widest transition-colors ${provider.is_active ? 'text-rose-400 hover:text-rose-600' : 'text-emerald-400 hover:text-emerald-600'}`}
+                                >
+                                    {provider.is_active ? 'Suspend' : 'Resume'}
+                                </button>
+                            </div>
+                        </div>
 
                         <div className="pt-8 border-t border-accent/5 flex items-center justify-between">
                             <div>
-                                <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-1">Standard Fee</p>
-                                <p className="text-3xl font-black tracking-tighter text-primary">${Number(provider.base_fee).toFixed(2)}</p>
+                                <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-2">Standard Protocol Fee</p>
+                                <p className="text-4xl font-black tracking-tighter text-primary">{formatPrice(provider.base_fee, storeCurrency)}</p>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-1">Status</p>
-                                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${provider.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                            <div className="text-right flex flex-col items-end">
+                                <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-2">Status</p>
+                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${provider.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
                                     }`}>
-                                    <ShieldCheck className="w-3 h-3" />
-                                    {provider.is_active ? 'Operational' : 'Suspended'}
+                                    <div className={`w-1 h-1 rounded-full ${provider.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                                    {provider.is_active ? 'Operational' : 'On Standby'}
                                 </div>
                             </div>
                         </div>
@@ -240,7 +255,7 @@ const AdminShipping = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest ml-2 text-primary/40">Base Fee ($)</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest ml-2 text-primary/40">Base Fee ({storeCurrency})</Label>
                                     <Input
                                         required
                                         type="number"

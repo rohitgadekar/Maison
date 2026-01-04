@@ -15,6 +15,8 @@ import {
 import { PremiumLoader } from '@/components/PremiumLoader';
 import { SizeChartBuilder, SizeChartData } from '@/components/admin/SizeChartBuilder';
 import { SizeChart } from '@/components/SizeChart';
+import { Price } from '@/components/Price';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Product {
   id: string;
@@ -35,6 +37,7 @@ interface Product {
 }
 
 const AdminProducts = () => {
+  const { storeCurrency } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -382,57 +385,71 @@ const AdminProducts = () => {
                   </span>
                 )}
               </div>
+
+              {/* Inventory Badge */}
+              <div className="absolute top-4 right-4 group-hover:translate-x-[-4px] transition-transform duration-500">
+                <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl flex flex-col items-center shadow-lg border border-accent/5 min-w-[60px]">
+                  <span className="text-[7px] font-black uppercase tracking-widest text-primary/30 leading-none mb-1">Stock</span>
+                  <span className="text-xs font-black text-primary leading-none">{product.inventory}</span>
+                </div>
+              </div>
+
               {!product.is_active && (
                 <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] flex items-center justify-center">
                   <span className="bg-rose-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">Inactive</span>
                 </div>
               )}
               {product.images && product.images.length > 1 && (
-                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm border border-accent/5">
+                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm border border-accent/5">
                   <ImageIcon className="w-3 h-3 text-accent" />
                   {product.images.length} Perspectives
                 </div>
               )}
             </div>
-            <div className="p-10" onClick={(e) => e.stopPropagation()}> {/* stop propagation so buttons still work */}
+            <div className="p-8 sm:p-10" onClick={(e) => e.stopPropagation()}> {/* stop propagation so buttons still work */}
               <div className="flex items-start justify-between gap-4 mb-6">
-                <h3 className="font-heading text-2xl font-bold tracking-tight group-hover:text-accent transition-colors">{product.name}</h3>
-                <span className=" text-xl font-medium italic text-primary/40">${Number(product.price).toLocaleString()}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-accent/5 p-4 rounded-2xl">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-1">Inventory</p>
-                  <p className=" text-lg font-black">{product.inventory} Units</p>
+                <div className="min-w-0">
+                  <h3 className="font-heading text-xl font-bold tracking-tight group-hover:text-accent transition-colors truncate mb-1">{product.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/30 italic">Dimensions:</span>
+                    <span className="text-[9px] font-black text-accent uppercase tracking-widest">{product.sizes?.length ? product.sizes[0] : 'N/A'}+</span>
+                  </div>
                 </div>
-                <div className="bg-accent/5 p-4 rounded-2xl">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-primary/30 mb-1">Dimensions</p>
-                  <p className=" text-lg font-black">{product.sizes?.length ? product.sizes[0] : 'N/A'}+</p>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-lg font-black text-primary tracking-tighter"><Price amount={Number(product.price)} /></span>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1 h-12 rounded-2xl border-accent/10 hover:bg-accent/5 hover:text-accent text-[9px] font-black uppercase tracking-widest gap-2"
-                  onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  className={`flex-1 h-12 rounded-2xl border-accent/10 text-[9px] font-black uppercase tracking-widest ${product.is_active ? 'hover:bg-rose-50 hover:text-rose-500' : 'hover:bg-emerald-50 hover:text-emerald-500'}`}
-                  onClick={(e) => { e.stopPropagation(); handleToggleActive(product); }}
-                >
-                  {product.is_active ? 'Restrain' : 'Release'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="w-12 h-12 rounded-2xl border-accent/10 text-primary/30 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteClick(e, product.id); }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+
+              <div className="grid grid-cols-12 gap-3 items-center">
+                <div className="col-span-4">
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 rounded-xl border-accent/10 hover:bg-accent/5 hover:text-accent text-[9px] font-black uppercase tracking-widest gap-2 shadow-sm"
+                    onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </Button>
+                </div>
+                <div className="col-span-5">
+                  <Button
+                    variant="outline"
+                    className={`w-full h-11 rounded-xl border-accent/10 text-[9px] font-black uppercase tracking-widest shadow-sm ${product.is_active ? 'hover:bg-rose-50 hover:text-rose-500' : 'hover:bg-emerald-50 hover:text-emerald-500'}`}
+                    onClick={(e) => { e.stopPropagation(); handleToggleActive(product); }}
+                  >
+                    {product.is_active ? 'Restrain' : 'Release'}
+                  </Button>
+                </div>
+                <div className="col-span-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="w-full h-11 rounded-xl border-accent/10 text-primary/30 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(e, product.id); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -516,7 +533,7 @@ const AdminProducts = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
-                  <Label htmlFor="price" className="text-[10px] font-black uppercase tracking-widest ml-1 text-primary/40">Contribution ($)</Label>
+                  <Label htmlFor="price" className="text-[10px] font-black uppercase tracking-widest ml-1 text-primary/40">Contribution ({storeCurrency})</Label>
                   <Input
                     id="price"
                     type="number"

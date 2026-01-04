@@ -29,6 +29,8 @@ import {
 import { PremiumLoader } from '@/components/PremiumLoader';
 import { calculateOrderTotals } from '@/lib/calculations';
 import { Invoice } from '@/components/Invoice';
+import { Price } from '@/components/Price';
+import { useCurrency } from '@/context/CurrencyContext';
 import { cn } from '@/lib/utils';
 
 interface Order {
@@ -73,6 +75,7 @@ interface Profile {
 type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 const AdminOrders = () => {
+  const { storeCurrency } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [paymentMap, setPaymentMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -526,7 +529,9 @@ const AdminOrders = () => {
                         )}
                       </td>
                       <td className="px-10 py-8">
-                        <span className="text-xl font-bold tracking-tighter text-primary">${Number(order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-xl font-bold tracking-tighter text-primary">
+                          <Price amount={Number(order.total_amount)} />
+                        </span>
                       </td>
                       <td className="px-10 py-8">
                         <Button
@@ -549,8 +554,8 @@ const AdminOrders = () => {
 
         {/* Order Details Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl overflow-hidden rounded-[2rem]">
-            <div className="p-6 sm:p-12">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border-accent/10 bg-[#FFFAF5]/95 backdrop-blur-2xl p-0 shadow-2xl rounded-[2rem]">
+            <div className="p-6 sm:p-12 overflow-y-auto">
               <DialogHeader className="mb-8 sm:mb-12 border-b border-accent/5 pb-6 sm:pb-8 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-accent text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Detailed Registry Exit</span>
@@ -678,7 +683,7 @@ const AdminOrders = () => {
                               </div>
                             </div>
                             <div className="text-right ml-4">
-                              <p className="text-xs sm:text-sm font-black text-primary/40">${Number(item.price).toLocaleString()}</p>
+                              <p className="text-xs sm:text-sm font-black text-primary/40"><Price amount={Number(item.price)} /></p>
                             </div>
                           </div>
                         </div>
@@ -713,19 +718,19 @@ const AdminOrders = () => {
                                 <AccordionContent className="pt-4 pb-0 space-y-3">
                                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
                                     <span>Gross Value</span>
-                                    <span>${calculatedGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span><Price amount={calculatedGross} /></span>
                                   </div>
                                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
                                     <span>Logistics ({selectedOrder.shipping_method_name || 'Standard'})</span>
-                                    <span>${shipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span><Price amount={shipping} /></span>
                                   </div>
                                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
                                     <span>Incentive {selectedOrder.coupons?.code ? `(${selectedOrder.coupons.code})` : 'Applied'}</span>
-                                    <span>-${discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span>-<Price amount={discount} /></span>
                                   </div>
                                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary/40">
                                     <span>Fiscal Duty (8%)</span>
-                                    <span>${tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span><Price amount={tax} /></span>
                                   </div>
                                 </AccordionContent>
                               </AccordionItem>
@@ -738,7 +743,7 @@ const AdminOrders = () => {
                         <div>
                           <p className="text-[8px] font-black uppercase tracking-[0.5em] text-primary/30 mb-1 italic">Final Settlement</p>
                           <p className="text-3xl font-black tracking-tighter text-primary">
-                            ${Number(selectedOrder.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <Price amount={Number(selectedOrder.total_amount)} />
                           </p>
                         </div>
                         <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center -mb-1">
@@ -755,8 +760,8 @@ const AdminOrders = () => {
 
         {/* Tracking Number Dialog */}
         <Dialog open={isTrackingDialogOpen} onOpenChange={setIsTrackingDialogOpen}>
-          <DialogContent className="max-w-md rounded-[2rem] sm:rounded-[2rem] border-accent/10 bg-white p-0 overflow-y-auto max-h-[90vh] shadow-2xl">
-            <div className="p-8 sm:p-12">
+          <DialogContent className="max-w-md rounded-[2rem] sm:rounded-[2rem] border-accent/10 bg-white p-0 overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
+            <div className="p-8 sm:p-12 overflow-y-auto">
               <DialogHeader className="mb-8">
                 <DialogTitle className="font-heading text-2xl sm:text-3xl font-black tracking-tighter flex items-center gap-4">
                   <Truck className="w-8 h-8 text-accent" />

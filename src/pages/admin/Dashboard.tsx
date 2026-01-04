@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +30,7 @@ interface Stats {
 
 const AdminDashboard = () => {
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
+  const { storeCurrency, formatPrice } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
   const [stats, setStats] = useState<Stats>({
@@ -168,13 +170,13 @@ const AdminDashboard = () => {
           }`}
       >
         <div className="h-full flex flex-col">
-          <div className="h-24 flex items-center px-8 border-b border-accent/5">
+          <div className="h-40 flex items-center px-8 pb-4 border-b border-accent/5 pt-8">
             <Link to="/" className="font-heading text-2xl font-black tracking-[0.25em] text-primary">MAISON</Link>
             <span className="ml-4 text-[8px] font-black uppercase tracking-[0.2em] bg-accent/10 text-accent px-3 py-1 rounded-full italic">Atelier</span>
           </div>
 
-          <nav className="flex-1 p-6 space-y-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/30 mb-6 ml-4">Management</p>
+          <nav className="flex-1 p-8 space-y-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/30 mb-10 ml-4">Management</p>
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -224,8 +226,8 @@ const AdminDashboard = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
               {[
-                { label: 'Total Secured Revenue', value: `$${stats.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, detail: 'Verified & Captured Assets' },
-                { label: 'Pending Collections', value: `$${stats.pendingPOD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, detail: 'Awaiting Concierge Settlement', isAlert: true },
+                { label: 'Total Secured Revenue', value: formatPrice(stats.revenue, storeCurrency), detail: 'Verified & Captured Assets' },
+                { label: 'Pending Collections', value: formatPrice(stats.pendingPOD, storeCurrency), detail: 'Awaiting Concierge Settlement', isAlert: true },
                 { label: 'Archival Orders', value: stats.totalOrders, detail: 'Lifetime Acquisitions' },
                 { label: 'Total Artifacts', value: stats.totalProducts, detail: 'Archive Catalog' },
               ].map((stat, i) => (

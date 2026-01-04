@@ -12,7 +12,7 @@ const About = () => {
       <Header />
       <CartDrawer />
 
-      <main className="flex-1 pt-32 sm:pt-48">
+      <main className="flex-1 pt-32 pb-20 lg:pt-20 lg:pb-0">
         {/* Editorial Hero */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
@@ -38,9 +38,9 @@ const About = () => {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl skew-y-1">
+              <div className="h-[75vh] mt-8 rounded-[3rem] overflow-hidden shadow-2xl skew-y-1">
                 <img
-                  src="https://images.unsplash.com/photo-1618236444721-4a8dba415c15?q=80&w=1474&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                  src="https://images.unsplash.com/photo-1707231510294-cc31617c9316?q=80&w=1064&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                   alt="Maison Aesthetic"
                   className="w-full h-full object-cover  brightness-90 hover:scale-110 transition-transform duration-1000 group-hover:scale-110"
                 />

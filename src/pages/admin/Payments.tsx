@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Price } from '@/components/Price';
 import { toast } from 'sonner';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { useCurrency } from '@/context/CurrencyContext';
 import {
     Select,
     SelectContent,
@@ -54,6 +55,7 @@ interface Payment {
 }
 
 const Payments = () => {
+    const { storeCurrency } = useCurrency();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +94,7 @@ const Payments = () => {
                     transaction_id: `POD-${order.id.slice(0, 8)}`, // Fallback TX ID
                     payment_method: 'Pay on Delivery (Manual)',
                     amount: order.total_amount,
-                    currency: 'USD',
+                    currency: storeCurrency,
                     status: order.status === 'cancelled' ? 'failed' : 'pending',
                     rzp_payment_id: 'N/A', // Placeholder
                     created_at: order.created_at,

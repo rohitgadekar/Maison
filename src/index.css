@@ -106,13 +106,22 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased select-none;
     font-family: 'Inter', sans-serif;
     /* Prevent Radix-ui/shadcn from hiding scrollbar and causing layout shifts */
     overflow-y: scroll !important;
     padding-right: 0px !important;
     display: flex;
     flex-direction: column;
+  }
+
+  img {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
   }
 
   /* Specific override for Radix UI scroll-lock mechanism */

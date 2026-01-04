@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, ShoppingBag, DollarSign, Calendar, Search } from 'lucide-react';
 import { PremiumLoader } from '@/components/PremiumLoader';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Customer {
     id: string;
@@ -15,6 +16,7 @@ interface Customer {
 }
 
 const AdminCustomers = () => {
+    const { storeCurrency, formatPrice } = useCurrency();
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -175,7 +177,7 @@ const AdminCustomers = () => {
                                             <td className="px-10 py-8 text-right">
                                                 <div className="inline-flex items-center gap-2">
                                                     <span className="text-2xl font-black tracking-tighter text-primary">
-                                                        ${customer.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        {formatPrice(customer.total_spent, storeCurrency)}
                                                     </span>
                                                 </div>
                                             </td>
@@ -214,7 +216,7 @@ const AdminCustomers = () => {
                         <div className="bg-white border border-accent/5 rounded-[2.5rem] p-10 shadow-sm">
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-8 border-b border-accent/5 pb-4">Average Investment</p>
                             <p className="text-4xl font-black mb-1 tracking-tighter text-primary">
-                                ${(customers.reduce((acc, c) => acc + c.total_spent, 0) / (customers.length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                {formatPrice(customers.reduce((acc, c) => acc + c.total_spent, 0) / (customers.length || 1), storeCurrency)}
                             </p>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/40 italic">Per Registered Member</p>
                         </div>
