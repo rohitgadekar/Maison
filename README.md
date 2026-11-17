@@ -203,7 +203,16 @@ Maison/
     │   ├── create-razorpay-order/  # Razorpay backend order generation
     │   ├── handle-razorpay-webhook/# Secure payment webhook processing
     │   └── send-order-notification/# Resend order confirmation emails
-    └── migrations/                 # PostgreSQL schema migrations
+    ├── migrations/                 # PostgreSQL schema migrations
+    └── schemas/                    # Organized SQL schemas, policies & consolidated setup
+        ├── consolidated_schema.sql # Master single-run script for all tables & policies
+        ├── cart_schema.sql
+        ├── currency_setup.sql
+        ├── orders_schema.sql
+        ├── product_stocks_schema.sql
+        ├── products_schema.sql
+        ├── stock_access_policy.sql
+        └── wishlist_schema.sql
 ```
 
 ---
@@ -274,19 +283,20 @@ The application utilizes client-side environment variables prefixed with `VITE_`
 
 ## 🗄️ Database & Backend Architecture
 
-Maison utilizes **Supabase** (PostgreSQL) with Row-Level Security (RLS) policies. Schema definition scripts are included directly in the root directory and the `supabase/` folder:
+Maison utilizes **Supabase** (PostgreSQL) with Row-Level Security (RLS) policies. Schema definition scripts are neatly organized under `supabase/schemas/` alongside automated migrations in `supabase/migrations/`:
 
-1. **Products & Inventory (`products_schema.sql`, `product_stocks_schema.sql`)**:
+1. **Master Setup (`supabase/schemas/consolidated_schema.sql`)**:
+   - Single idempotent script consolidating all auxiliary tables, RLS policies, and realtime publications in one execution.
+2. **Products & Inventory (`supabase/schemas/products_schema.sql`, `supabase/schemas/product_stocks_schema.sql`)**:
    - Manages product metadata, slugs, tags, pricing, and per-size stock matrix.
-   - Includes stored procedures (`deduct_inventory`) to atomically decrement stock during purchases.
-2. **Orders & Transactions (`orders_schema.sql`)**:
-   - Stores orders, shipping details, payment modes, tracking numbers, and fulfillment status.
-   - Associated `order_items` table linking specific size variants and pricing at time of purchase.
-3. **Cart & Wishlist (`cart_schema.sql`, `wishlist_schema.sql`)**:
-   - Real-time customer cart and saved wishlist artifacts tied to user UUIDs.
-4. **Currency Settings (`currency_setup.sql`)**:
+   - Includes stored procedures (`deduct_inventory`) to atomically decrement stock during purchases and adds tables to `supabase_realtime`.
+3. **Orders & Transactions (`supabase/schemas/orders_schema.sql`)**:
+   - Stores orders, shipping details, payment modes, tracking numbers, and fulfillment status with user isolation policies.
+4. **Cart & Wishlist (`supabase/schemas/cart_schema.sql`, `supabase/schemas/wishlist_schema.sql`)**:
+   - Real-time customer cart and saved wishlist artifacts tied to user UUIDs with full CRUD policies.
+5. **Currency Settings (`supabase/schemas/currency_setup.sql`)**:
    - Configures store base currency and exchange rates across supported international currencies.
-5. **Security Policies (`stock_access_policy.sql`)**:
+6. **Security Policies (`supabase/schemas/stock_access_policy.sql`)**:
    - Granular RLS policies granting public read access while restricting administrative modifications to verified staff.
 
 ---
